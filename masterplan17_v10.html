@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MasterPlan 17.0 — v10.0 TWIN-TRACK</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+body { font-family: 'IBM Plex Sans', sans-serif; background:#09090b; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:#09090b; }
+::-webkit-scrollbar-thumb { background:#3f3f46; border-radius:2px; }
+.card {
+  background: linear-gradient(135deg,rgba(24,24,27,0.95) 0%,rgba(15,15,17,0.98) 100%);
+  border: 1px solid rgba(63,63,70,0.5);
+}
+/* Twin-Track group borders */
+.card-group-a {
+  background: linear-gradient(135deg,rgba(24,24,27,0.95) 0%,rgba(15,15,17,0.98) 100%);
+  border: 1px solid rgba(245,158,11,0.35);
+}
+.card-group-b {
+  background: linear-gradient(135deg,rgba(24,24,27,0.95) 0%,rgba(15,15,17,0.98) 100%);
+  border: 1px solid rgba(20,184,166,0.35);
+}
+.section-label {
+  font-size:10px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:#52525b;
+  display:flex; align-items:center; gap:6px;
+}
+.section-label .dot { color:#f59e0b; }
+.track-a-label { font-size:11px; font-weight:700; color:#f59e0b; letter-spacing:.05em; }
+.track-b-label { font-size:11px; font-weight:700; color:#14b8a6; letter-spacing:.05em; }
+input[type="number"], select {
+  background:#0c0c0e; border:1px solid #27272a; border-radius:6px;
+  padding:6px 8px; font-size:12px; color:#e4e4e7; width:100%;
+  font-family:'JetBrains Mono',monospace;
+  transition: border-color .15s, box-shadow .15s;
+}
+input[type="number"]:focus, select:focus {
+  outline:none; border-color:#f59e0b;
+  box-shadow:0 0 0 2px rgba(245,158,11,.12);
+}
+input[type="range"] { accent-color:#f59e0b; width:100%; cursor:pointer; }
+.lbl { display:block; font-size:10px; color:#52525b; margin-bottom:3px; }
+.field { margin-bottom:8px; }
+.badge { font-size:10px; font-family:'JetBrains Mono',monospace;
+  padding:2px 7px; border-radius:4px; }
+.badge-tfsa   { background:rgba(16,185,129,.15); color:#10b981; border:1px solid rgba(16,185,129,.3); }
+.badge-rrsp   { background:rgba(99,102,241,.15);  color:#818cf8; border:1px solid rgba(99,102,241,.3); }
+.badge-taxable{ background:rgba(245,158,11,.15);  color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+
+/* tooltip */
+.tip-wrap { position:relative; display:inline-flex; align-items:center; }
+.tip-wrap .tip {
+  visibility:hidden; opacity:0;
+  position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%);
+  background:#18181b; border:1px solid #3f3f46; color:#e4e4e7;
+  font-size:10px; padding:4px 8px; border-radius:4px; white-space:nowrap;
+  transition:opacity .15s; z-index:200; pointer-events:none;
+  font-family:'JetBrains Mono',monospace;
+}
+.tip-wrap:hover .tip { visibility:visible; opacity:1; }
+.qmark { color:#3f3f46; font-size:10px; cursor:help; margin-left:3px; }
+
+/* run button */
+#btn-run {
+  background: linear-gradient(90deg,#b45309,#f59e0b,#b45309);
+  background-size:200% 100%; color:#09090b; font-weight:700;
+  transition: background-position .4s, transform .1s, box-shadow .2s;
+  box-shadow: 0 0 20px rgba(245,158,11,.2);
+}
+#btn-run:hover { background-position:100% 0; box-shadow:0 0 30px rgba(245,158,11,.35); }
+#btn-run:active { transform:scale(.99); }
+
+/* ledger table */
+.ledger th { font-size:10px; padding:7px 10px; border-bottom:1px solid #1c1c1f; }
+.ledger td { font-size:11px; padding:6px 10px; border-bottom:1px solid #141416; font-family:'JetBrains Mono',monospace; }
+.ledger tbody tr:hover td { background:rgba(255,255,255,.018) !important; }
+thead tr:first-child th { border-top: 2px solid rgba(245,158,11,.35); }
+
+/* progress bar */
+.pbar-seg { height:100%; transition:width .3s; }
+
+/* stress tag */
+.stress-on { background:rgba(239,68,68,.15); color:#f87171; border:1px solid rgba(239,68,68,.3); }
+.stress-off { background:rgba(39,39,42,.6); color:#52525b; border:1px solid #27272a; }
+
+/* account containers */
+.acct-tfsa   { border-color: rgba(16,185,129,.35); }
+.acct-rrsp   { border-color: rgba(99,102,241,.35); }
+.acct-taxable{ border-color: rgba(245,158,11,.35); }
+.acct-tfsa   .acct-header { color:#10b981; }
+.acct-rrsp   .acct-header { color:#818cf8; }
+.acct-taxable .acct-header { color:#fbbf24; }
+
+/* asset row */
+.asset-row {
+  background: rgba(9,9,11,0.7);
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 90px 1fr 28px;
+  gap: 8px;
+  align-items: end;
+  transition: border-color .15s;
+}
+.asset-row:hover { border-color: #3f3f46; }
+.asset-row select, .asset-row input[type="number"] { font-size:11px; padding:5px 7px; }
+
+/* weight validation */
+.weight-ok   { color:#10b981; }
+.weight-warn { color:#f87171; }
+.weight-bar-fill { transition: width .3s; height:100%; border-radius:4px; }
+
+/* add asset button */
+.btn-add-asset {
+  background: transparent;
+  border: 1px dashed #27272a;
+  border-radius:8px;
+  color:#3f3f46;
+  font-size:11px;
+  font-family:'JetBrains Mono',monospace;
+  padding:7px 12px;
+  cursor:pointer;
+  width:100%;
+  transition: border-color .15s, color .15s;
+}
+.btn-add-asset:hover { border-color:#52525b; color:#71717a; }
+
+/* delete button */
+.btn-del {
+  background:transparent;
+  border:1px solid #27272a;
+  border-radius:5px;
+  color:#52525b;
+  cursor:pointer;
+  font-size:14px;
+  line-height:1;
+  padding:3px 7px;
+  transition: border-color .15s, color .15s, background .15s;
+  display:flex; align-items:center; justify-content:center;
+  height:30px;
+}
+.btn-del:hover { border-color:#ef4444; color:#f87171; background:rgba(239,68,68,.08); }
+
+/* account weight input */
+.acct-weight-input {
+  background:#0c0c0e; border:1px solid #27272a; border-radius:6px;
+  padding:4px 8px; font-size:12px; color:#e4e4e7; width:70px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* optimizer styles */
+#btn-optimize {
+  background: linear-gradient(90deg,#1e3a5f,#0ea5e9,#1e3a5f);
+  background-size:200% 100%; color:#e0f2fe; font-weight:700;
+  transition: background-position .4s, transform .1s, box-shadow .2s;
+  box-shadow: 0 0 20px rgba(14,165,233,.18);
+}
+#btn-optimize:hover { background-position:100% 0; box-shadow:0 0 32px rgba(14,165,233,.35); }
+#btn-optimize:active { transform:scale(.99); }
+#btn-optimize:disabled { opacity:.45; cursor:not-allowed; }
+
+.opt-priority-card {
+  background:rgba(9,9,11,0.7);
+  border:1px solid #27272a;
+  border-radius:10px;
+  padding:14px 16px;
+}
+.rank-1 { color:#fbbf24; }
+.rank-2 { color:#e4e4e7; }
+.rank-3 { color:#f97316; }
+
+/* Twin-Track separator */
+.twin-track-divider {
+  display:flex; align-items:center; gap:12px; margin: 6px 0;
+}
+.twin-track-divider::before, .twin-track-divider::after {
+  content:''; flex:1; height:1px;
+}
+.twin-track-divider::before { background: linear-gradient(90deg, transparent, rgba(245,158,11,0.3)); }
+.twin-track-divider::after  { background: linear-gradient(90deg, rgba(20,184,166,0.3), transparent); }
+.twin-track-divider span {
+  font-size:9px; font-family:'JetBrains Mono',monospace;
+  color:#3f3f46; letter-spacing:.1em; white-space:nowrap;
+}
+</style>
+</head>
+<body class="text-zinc-100 min-h-screen flex flex-col antialiased pb-16">
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+<header class="border-b border-zinc-900 bg-zinc-950/90 backdrop-blur sticky top-0 z-50 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex justify-between items-center gap-2 flex-wrap">
+    <div class="flex items-center gap-3">
+      <div class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></div>
+      <h1 class="text-sm font-bold tracking-tight">
+        MASTERPLAN 17.0
+        <span class="text-zinc-600 text-[10px] font-mono ml-2">v10.0 · TWIN-TRACK · GPIQ HYBRID · DYNAMIC DIV VALVE · CA TAX · OPTIMIZER · ACCT-FIREWALL</span>
+      </h1>
+    </div>
+    <div class="flex items-center gap-1.5 flex-wrap">
+      <span class="badge badge-tfsa">TFSA</span>
+      <span class="badge badge-rrsp">RRSP</span>
+      <span class="badge badge-taxable">TAXABLE</span>
+      <span class="badge stress-on ml-2">STRESS TEST</span>
+      <span class="badge" style="background:rgba(168,85,247,.12);color:#c084fc;border:1px solid rgba(168,85,247,.3);">VOL DECAY</span>
+      <span class="badge ml-1" style="background:rgba(245,158,11,.12);color:#fde047;border:1px solid rgba(234,179,8,.3);">DIV VALVE v8</span>
+      <span class="badge ml-1" style="background:rgba(14,165,233,.12);color:#38bdf8;border:1px solid rgba(14,165,233,.3);">GPIQ QQQ-AXIS</span>
+      <span class="badge ml-1" style="background:rgba(20,184,166,.15);color:#2dd4bf;border:1px solid rgba(20,184,166,.35);">TWIN-TRACK v10</span>
+    </div>
+  </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 mt-5 space-y-5">
+
+<!-- ══ 01 DATA FEED ═══════════════════════════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-3">
+  <div class="section-label"><span class="dot">◈</span> 01 · 자산 시계열 데이터 피드 (CSV)</div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-zinc-950 border border-zinc-800/50 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-zinc-400">나스닥 100 (QQQ) <span class="text-rose-500">*</span></label>
+      <input type="file" id="file-qqq" accept=".csv" class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-qqq" class="text-[10px] text-zinc-600 mono">대기 중...</span>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-zinc-400">S&amp;P 500 (SPY) <span class="text-rose-500">*</span></label>
+      <input type="file" id="file-sp500" accept=".csv" multiple class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-sp500" class="text-[10px] text-zinc-600 mono">대기 중 (다중 선택 가능)...</span>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-zinc-400">JEPI 가격 (선택)</label>
+      <input type="file" id="file-jepi" accept=".csv" class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-jepi" class="text-[10px] text-amber-600/70 mono">미로드 시 합성 모델</span>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-zinc-400">JEPI 배당 (선택)</label>
+      <input type="file" id="file-jepidiv" accept=".csv" class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-jepidiv" class="text-[10px] text-amber-600/70 mono">미로드 시 합성 모델</span>
+    </div>
+    <div class="bg-zinc-950 border border-sky-900/40 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-sky-400">GPIQ 가격 (선택)</label>
+      <input type="file" id="file-gpiq" accept=".csv" class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-gpiq" class="text-[10px] text-sky-600/70 mono">미로드 시 QQQ 기반 합성</span>
+    </div>
+    <div class="bg-zinc-950 border border-sky-900/40 p-3 rounded-lg space-y-1.5">
+      <label class="text-[11px] font-semibold text-sky-400">GPIQ 배당 (선택)</label>
+      <input type="file" id="file-gpiqdiv" accept=".csv" class="block w-full text-[10px] text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer">
+      <span id="status-gpiqdiv" class="text-[10px] text-sky-600/70 mono">미로드 시 QQQ 기반 합성</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 02 TWIN-TRACK ALLOCATION ════════════════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-4">
+  <div class="section-label"><span class="dot">◈</span> 02 · 계좌별 자산 배분 — Twin-Track 이원화 <span class="text-zinc-700 normal-case tracking-normal font-normal">(각 트랙 계좌 비중 합계 100%)</span></div>
+
+  <!-- JEPI synth yield override (shared) -->
+  <div class="bg-zinc-900/40 border border-zinc-800/40 rounded-xl p-4">
+    <div class="flex items-center gap-4 flex-wrap">
+      <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">JEPI / GPIQ · 인컴형 합성 수익률 오버라이드 (양 트랙 공유)</span>
+      <div class="flex items-center gap-2">
+        <label class="lbl mb-0">합성 연간 수익률 (%)</label>
+        <input type="number" id="inc-synth-yield" value="9.0" step="0.1" min="0" max="30" style="width:80px">
+        <span class="tip-wrap qmark">?<span class="tip">JEPI 실제 데이터 미로드 시<br>합성 일간 수익률에 사용.<br>0이면 JEPI 합성모델 적용.</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GROUP A ── -->
+  <div class="card-group-a rounded-xl p-4 space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="track-a-label">⬡ 그룹 A 자산 세트 설정</span>
+        <span class="text-[10px] mono text-zinc-600">ASSET_SET_A</span>
+      </div>
+    </div>
+
+    <!-- Account weight bar A -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] text-zinc-500 mono">계좌별 자산비중 합계 (그룹 A)</span>
+        <span id="grand-total-display-A" class="text-[10px] mono text-zinc-500">총합: 0%</span>
+      </div>
+      <div class="h-2 bg-zinc-900 rounded-full overflow-hidden flex gap-px">
+        <div id="gbar-A-tfsa"    class="pbar-seg bg-emerald-500/70" style="width:0%"></div>
+        <div id="gbar-A-rrsp"    class="pbar-seg bg-indigo-500/60"  style="width:0%"></div>
+        <div id="gbar-A-taxable" class="pbar-seg bg-amber-500/60"   style="width:0%"></div>
+      </div>
+      <div id="grand-warning-A" class="hidden text-[11px] text-rose-400 font-semibold">⚠ 그룹 A 전체 자산 비중 합계가 100%가 아닙니다.</div>
+      <div class="flex gap-4 text-[10px] mono text-zinc-600">
+        <span>🟢 TFSA: <span id="lbl-A-tfsa-total">0%</span></span>
+        <span>🔵 RRSP: <span id="lbl-A-rrsp-total">0%</span></span>
+        <span>🟡 과세계좌: <span id="lbl-A-taxable-total">0%</span></span>
+      </div>
+    </div>
+
+    <!-- Three account containers A -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- TFSA A -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-tfsa rounded-xl p-4 space-y-3" id="container-A-TFSA">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🟢 TFSA</span>
+            <span class="text-[10px] mono text-zinc-600">Tax-Free Savings</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-A-TFSA" class="acct-weight-input" value="45" min="0" max="100" step="1" oninput="updateGrandTotals('A')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-A-TFSA" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-A-TFSA" class="weight-bar-fill bg-emerald-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-A-TFSA" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('A','TFSA')">+ 자산 추가</button>
+      </div>
+
+      <!-- RRSP A -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-rrsp rounded-xl p-4 space-y-3" id="container-A-RRSP">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🔵 RRSP</span>
+            <span class="text-[10px] mono text-zinc-600">Registered Retirement</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-A-RRSP" class="acct-weight-input" value="30" min="0" max="100" step="1" oninput="updateGrandTotals('A')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-A-RRSP" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-A-RRSP" class="weight-bar-fill bg-indigo-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-A-RRSP" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('A','RRSP')">+ 자산 추가</button>
+      </div>
+
+      <!-- TAXABLE A -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-taxable rounded-xl p-4 space-y-3" id="container-A-TAXABLE">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🟡 과세계좌</span>
+            <span class="text-[10px] mono text-zinc-600">Taxable / Non-Reg</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-A-TAXABLE" class="acct-weight-input" value="25" min="0" max="100" step="1" oninput="updateGrandTotals('A')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-A-TAXABLE" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-A-TAXABLE" class="weight-bar-fill bg-amber-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-A-TAXABLE" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('A','TAXABLE')">+ 자산 추가</button>
+      </div>
+    </div>
+
+    <!-- Quick presets A -->
+    <div class="flex flex-wrap gap-2 pt-1">
+      <span class="text-[10px] text-zinc-600 self-center">그룹 A 빠른 프리셋:</span>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-amber-900/50 text-amber-600 hover:border-amber-500 hover:text-amber-400 transition-colors" onclick="applyPreset('A','standard')">표준 (BH+INC+SWING)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-amber-900/50 text-amber-600 hover:border-amber-500 hover:text-amber-400 transition-colors" onclick="applyPreset('A','aggressive')">공격형 (QLD+TQQQ 올인)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-amber-900/50 text-amber-600 hover:border-amber-500 hover:text-amber-400 transition-colors" onclick="applyPreset('A','income')">인컴형 (JEPI 중심)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-zinc-800 text-zinc-500 hover:border-rose-800 hover:text-rose-400 transition-colors" onclick="clearAllRows('A')">그룹 A 초기화</button>
+    </div>
+  </div>
+
+  <!-- Twin-Track Divider -->
+  <div class="twin-track-divider">
+    <span>▲ TRACK A · ASSET_SET_A ▲ ═══ ▼ TRACK B · ASSET_SET_B ▼</span>
+  </div>
+
+  <!-- ── GROUP B ── -->
+  <div class="card-group-b rounded-xl p-4 space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="track-b-label">⬡ 그룹 B 자산 세트 설정</span>
+        <span class="text-[10px] mono text-zinc-600">ASSET_SET_B</span>
+      </div>
+    </div>
+
+    <!-- Account weight bar B -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] text-zinc-500 mono">계좌별 자산비중 합계 (그룹 B)</span>
+        <span id="grand-total-display-B" class="text-[10px] mono text-zinc-500">총합: 0%</span>
+      </div>
+      <div class="h-2 bg-zinc-900 rounded-full overflow-hidden flex gap-px">
+        <div id="gbar-B-tfsa"    class="pbar-seg bg-emerald-500/70" style="width:0%"></div>
+        <div id="gbar-B-rrsp"    class="pbar-seg bg-indigo-500/60"  style="width:0%"></div>
+        <div id="gbar-B-taxable" class="pbar-seg bg-teal-500/60"    style="width:0%"></div>
+      </div>
+      <div id="grand-warning-B" class="hidden text-[11px] text-rose-400 font-semibold">⚠ 그룹 B 전체 자산 비중 합계가 100%가 아닙니다.</div>
+      <div class="flex gap-4 text-[10px] mono text-zinc-600">
+        <span>🟢 TFSA: <span id="lbl-B-tfsa-total">0%</span></span>
+        <span>🔵 RRSP: <span id="lbl-B-rrsp-total">0%</span></span>
+        <span>🟡 과세계좌: <span id="lbl-B-taxable-total">0%</span></span>
+      </div>
+    </div>
+
+    <!-- Three account containers B -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- TFSA B -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-tfsa rounded-xl p-4 space-y-3" id="container-B-TFSA">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🟢 TFSA</span>
+            <span class="text-[10px] mono text-zinc-600">Tax-Free Savings</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-B-TFSA" class="acct-weight-input" value="45" min="0" max="100" step="1" oninput="updateGrandTotals('B')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-B-TFSA" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-B-TFSA" class="weight-bar-fill bg-emerald-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-B-TFSA" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('B','TFSA')">+ 자산 추가</button>
+      </div>
+
+      <!-- RRSP B -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-rrsp rounded-xl p-4 space-y-3" id="container-B-RRSP">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🔵 RRSP</span>
+            <span class="text-[10px] mono text-zinc-600">Registered Retirement</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-B-RRSP" class="acct-weight-input" value="30" min="0" max="100" step="1" oninput="updateGrandTotals('B')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-B-RRSP" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-B-RRSP" class="weight-bar-fill bg-indigo-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-B-RRSP" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('B','RRSP')">+ 자산 추가</button>
+      </div>
+
+      <!-- TAXABLE B -->
+      <div class="bg-zinc-950 border border-zinc-800/50 acct-taxable rounded-xl p-4 space-y-3" id="container-B-TAXABLE">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="acct-header text-xs font-bold">🟡 과세계좌</span>
+            <span class="text-[10px] mono text-zinc-600">Taxable / Non-Reg</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-zinc-600">계좌비중</span>
+            <input type="number" id="acct-weight-B-TAXABLE" class="acct-weight-input" value="25" min="0" max="100" step="1" oninput="updateGrandTotals('B')">
+            <span class="text-[10px] text-zinc-600">%</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] mono">
+            <span class="text-zinc-600">계좌 내 자산 합계</span>
+            <span id="inner-total-B-TAXABLE" class="weight-warn">0%</span>
+          </div>
+          <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="inner-bar-B-TAXABLE" class="weight-bar-fill bg-teal-500/60" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="rows-B-TAXABLE" class="space-y-2"></div>
+        <button class="btn-add-asset" onclick="addAssetRow('B','TAXABLE')">+ 자산 추가</button>
+      </div>
+    </div>
+
+    <!-- Quick presets B -->
+    <div class="flex flex-wrap gap-2 pt-1">
+      <span class="text-[10px] text-zinc-600 self-center">그룹 B 빠른 프리셋:</span>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-teal-900/50 text-teal-600 hover:border-teal-500 hover:text-teal-400 transition-colors" onclick="applyPreset('B','standard')">표준 (BH+INC+SWING)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-teal-900/50 text-teal-600 hover:border-teal-500 hover:text-teal-400 transition-colors" onclick="applyPreset('B','aggressive')">공격형 (QLD+TQQQ 올인)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-teal-900/50 text-teal-600 hover:border-teal-500 hover:text-teal-400 transition-colors" onclick="applyPreset('B','income')">인컴형 (JEPI 중심)</button>
+      <button class="text-[10px] mono px-2 py-1 rounded border border-zinc-800 text-zinc-500 hover:border-rose-800 hover:text-rose-400 transition-colors" onclick="clearAllRows('B')">그룹 B 초기화</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 03 MA/EMA SIGNAL PARAMS — TWIN-TRACK ═══════════════════════ -->
+<section class="card rounded-xl p-5 space-y-4">
+  <div class="section-label"><span class="dot">◈</span> 03 · MA / EMA 신호 파라미터 — Twin-Track 이원화</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Group A Signal -->
+    <div class="bg-zinc-950 border border-amber-900/40 rounded-xl p-4 space-y-3">
+      <div class="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+        <span class="text-xs font-bold text-amber-400">⬡ 그룹 A 트랙 파라미터 (SIGNAL_A)</span>
+        <span class="text-[10px] mono text-zinc-600">SIGNAL_A</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field">
+          <label class="lbl">추세 MA 유형</label>
+          <select id="sc-a-ma-type">
+            <option value="SMA" selected>SMA (단순이동평균)</option>
+            <option value="EMA">EMA (지수이동평균)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">추세 MA 기간</label>
+          <input type="number" id="sc-a-ma-period" value="40" min="5" max="500" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">기준선 EMA 기간</label>
+          <input type="number" id="sc-a-ema-period" value="200" min="20" max="500" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">ADX(14) 진입 임계</label>
+          <input type="number" id="sc-a-adx" value="20" min="0" max="60" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">ATR(14) 손절 승수</label>
+          <input type="number" id="sc-a-atr" value="3.0" min="0.5" max="20" step="0.1">
+        </div>
+        <div class="field">
+          <label class="lbl">신호 조건</label>
+          <select id="sc-a-signal-mode">
+            <option value="AND" selected>MA &gt; EMA AND ADX (기본)</option>
+            <option value="MA_ONLY">MA &gt; EMA 단독</option>
+            <option value="ADX_ONLY">ADX 단독</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- Group B Signal -->
+    <div class="bg-zinc-950 border border-teal-900/40 rounded-xl p-4 space-y-3">
+      <div class="flex items-center justify-between border-b border-zinc-800/50 pb-2">
+        <span class="text-xs font-bold text-teal-400">⬡ 그룹 B 트랙 파라미터 (SIGNAL_B)</span>
+        <span class="text-[10px] mono text-zinc-600">SIGNAL_B</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field">
+          <label class="lbl">추세 MA 유형</label>
+          <select id="sc-b-ma-type">
+            <option value="SMA" selected>SMA (단순이동평균)</option>
+            <option value="EMA">EMA (지수이동평균)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">추세 MA 기간</label>
+          <input type="number" id="sc-b-ma-period" value="40" min="5" max="500" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">기준선 EMA 기간</label>
+          <input type="number" id="sc-b-ema-period" value="200" min="20" max="500" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">ADX(14) 진입 임계</label>
+          <input type="number" id="sc-b-adx" value="20" min="0" max="60" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">ATR(14) 손절 승수</label>
+          <input type="number" id="sc-b-atr" value="3.0" min="0.5" max="20" step="0.1">
+        </div>
+        <div class="field">
+          <label class="lbl">신호 조건</label>
+          <select id="sc-b-signal-mode">
+            <option value="AND" selected>MA &gt; EMA AND ADX (기본)</option>
+            <option value="MA_ONLY">MA &gt; EMA 단독</option>
+            <option value="ADX_ONLY">ADX 단독</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 04 TAX PARAMS ══════════════════════════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-4">
+  <div class="section-label"><span class="dot">◈</span> 04 · 캐나다 세율 파라미터</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="field">
+        <label class="lbl">한계세율 MTR (%)</label>
+        <input type="number" id="tax-mtr" value="43.41" step="0.01" class="text-amber-400 font-bold">
+      </div>
+      <div class="field">
+        <label class="lbl">자본이득세율 CG (%)
+          <span class="tip-wrap qmark">?<span class="tip">MTR × 산입률(2024~: 66.67%)<br>예: 43.41 × 0.6667 ≈ 28.94</span></span>
+        </label>
+        <input type="number" id="tax-cg" value="28.94" step="0.01" class="text-amber-400 font-bold">
+      </div>
+      <div class="field">
+        <label class="lbl">캐나다 적격배당 실효세율 (%)</label>
+        <input type="number" id="tax-cdn-div" value="25.38" step="0.01" class="text-amber-400 font-bold">
+      </div>
+      <div class="field">
+        <label class="lbl">미국ETF 배당 CA측 세율 (%)</label>
+        <input type="number" id="tax-ca-div" value="43.41" step="0.01" class="text-amber-400 font-bold">
+      </div>
+      <div class="field">
+        <label class="lbl">미국 원천징수세 WHT (%)
+          <span class="tip-wrap qmark">?<span class="tip">TFSA·과세계좌 15%<br>RRSP는 조약으로 면제</span></span>
+        </label>
+        <input type="number" id="tax-wht" value="15" step="0.1" class="text-rose-400 font-bold">
+      </div>
+      <div class="field">
+        <label class="lbl">RRSP 인출세율 (%)</label>
+        <input type="number" id="tax-rrsp-withdrawal" value="43.41" step="0.01" class="text-indigo-400 font-bold">
+      </div>
+      <div class="field col-span-2">
+        <label class="lbl">Base Borrowing Rate / SOFR (%)
+          <span class="tip-wrap qmark">?<span class="tip">레버리지 ETF 일간 차입비용 기준금리<br>QLD: (leverageMult-1)×SOFR<br>TQQQ: (leverageMult-1)×SOFR<br>기본값 3.0% (5Y avg)</span></span>
+        </label>
+        <input type="number" id="sofr-rate" value="3.0" step="0.1" min="0" max="15" class="text-teal-400 font-bold">
+      </div>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl overflow-hidden self-start">
+      <table class="w-full text-xs">
+        <thead><tr class="bg-zinc-900/80 border-b border-zinc-800">
+          <th class="p-2.5 text-left text-zinc-400">계좌</th>
+          <th class="p-2.5 text-center text-zinc-400">US WHT</th>
+          <th class="p-2.5 text-left text-zinc-400">일별 세금</th>
+          <th class="p-2.5 text-left text-zinc-400">CG 정산</th>
+        </tr></thead>
+        <tbody class="divide-y divide-zinc-900 text-[10px] mono">
+          <tr><td class="p-2.5"><span class="badge badge-rrsp">RRSP</span></td><td class="p-2.5 text-center text-emerald-400">✓ 면제</td><td class="p-2.5 text-zinc-500">없음</td><td class="p-2.5 text-zinc-500">인출 시 MTR</td></tr>
+          <tr><td class="p-2.5"><span class="badge badge-tfsa">TFSA</span></td><td class="p-2.5 text-center text-rose-400">✗ 15%</td><td class="p-2.5 text-zinc-500">WHT만</td><td class="p-2.5 text-zinc-500">없음</td></tr>
+          <tr><td class="p-2.5"><span class="badge badge-taxable">TAXABLE</span></td><td class="p-2.5 text-center text-rose-400">✗ 15%</td><td class="p-2.5 text-zinc-500">WHT+CA세</td><td class="p-2.5 text-zinc-500">연리밸 시 CG세</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 05 ADVANCED: STRESS + VOL DECAY ═══════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-4">
+  <div class="section-label"><span class="dot">◈</span> 05 · 고급 스트레스 테스트 &amp; 변동성 감쇠 진단</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Gap Down / Slippage -->
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs font-bold text-rose-400">갭 하락 &amp; 슬리피지 스트레스</span>
+        <label class="flex items-center gap-1.5 ml-auto cursor-pointer">
+          <input type="checkbox" id="stress-enabled" class="accent-rose-500">
+          <span class="text-[10px] text-zinc-500">활성화</span>
+        </label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field">
+          <label class="lbl">연간 갭 하락 발생 확률 (%)</label>
+          <input type="number" id="stress-prob" value="5" min="0" max="50" step="0.5">
+        </div>
+        <div class="field">
+          <label class="lbl">갭 하락 크기 (%)</label>
+          <input type="number" id="stress-gap" value="-7" min="-50" max="0" step="0.5">
+        </div>
+        <div class="field">
+          <label class="lbl">슬리피지 (bp)</label>
+          <input type="number" id="stress-slip" value="10" min="0" max="100" step="1">
+        </div>
+        <div class="field">
+          <label class="lbl">난수 시드 (재현성)</label>
+          <input type="number" id="stress-seed" value="42" min="0" max="9999" step="1">
+        </div>
+      </div>
+      <p class="text-[10px] text-zinc-600 leading-relaxed">
+        활성화 시: 진입·청산 신호마다 슬리피지 차감, 설정 확률로 갭 하락 충격 주입.
+      </p>
+    </div>
+    <!-- Vol Decay -->
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-3">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs font-bold" style="color:#c084fc;">변동성 감쇠 (Leverage Drag) 진단</span>
+        <label class="flex items-center gap-1.5 ml-auto cursor-pointer">
+          <input type="checkbox" id="voldecay-enabled" checked class="accent-purple-500">
+          <span class="text-[10px] text-zinc-500">항상 계산</span>
+        </label>
+      </div>
+      <p class="text-[10px] text-zinc-500 leading-relaxed">
+        레버리지 자산의 TACTICAL ON 구간에서 변동성 감쇠를 분리 계산합니다.
+      </p>
+      <div class="bg-zinc-900/50 border border-zinc-800/40 rounded-lg p-3">
+        <div class="text-[10px] text-zinc-500">
+          <span style="color:#c084fc;">감쇠 공식:</span> Daily Drag = ½ × (Lev−1)² × σ²<br>
+          σ = 일별 QQQ 수익률 표준편차 (구간 추정)<br>
+          누적 감쇠 = Σ Daily Drag (레버리지 ON 구간 전체)
+        </div>
+      </div>
+      <div id="voldecay-preview" class="text-[10px] mono text-zinc-600">
+        연산 후 누적 감쇠 수치가 여기에 출력됩니다.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 05b PARKING ASSET EMERGENCY SWITCH ══════════════════════ -->
+<section class="card rounded-xl p-4">
+  <div class="section-label mb-3"><span class="dot">◈</span> 05b · 주차 자산 비상 스위칭 프로토콜</div>
+  <div class="bg-zinc-950 border border-amber-900/30 rounded-xl p-4 space-y-3">
+    <div class="flex items-center gap-3 flex-wrap">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="boxx-sgov-switch" class="accent-amber-500">
+        <span class="text-[11px] font-bold text-amber-400">BOXX → SGOV 비상 스위칭 활성화</span>
+      </label>
+      <span class="text-[10px] text-zinc-600 mono">IRS 판결 리스크 대피 프로토콜</span>
+    </div>
+    <p class="text-[10px] text-zinc-500 leading-relaxed">
+      활성화 시: Tactical OFF (State=0) 구간에서 주차 수익률을 <span class="text-amber-400">BOXX(고정 3%)</span> 대신
+      <span class="text-emerald-400">SGOV(T-Bill 실효 수익률)</span>로 적용합니다.
+      SGOV 연간 수익률은 아래 값을 사용합니다.
+    </p>
+    <div class="flex items-center gap-3">
+      <label class="lbl mb-0 whitespace-nowrap">SGOV 연간 수익률 (%)</label>
+      <input type="number" id="sgov-rate" value="5.1" step="0.05" min="0" max="10" style="width:90px">
+      <span class="text-[10px] text-zinc-600 mono">비활성화 시 BOXX 3% 고정 적용</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ RUN BUTTON ═════════════════════════════════════════════════ -->
+<button id="btn-run" class="w-full py-3.5 px-4 rounded-xl text-sm uppercase tracking-widest cursor-pointer">
+  ⚡ 마스터플랜 17.0 · TWIN-TRACK · 그룹A(자산A+신호A) vs 그룹B(자산B+신호B) · 양대 장부 세후 성과 비교 집행
+</button>
+
+<!-- ══ 06 RESULTS ═════════════════════════════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-4">
+  <div class="section-label"><span class="dot">◈</span> 06 · Twin-Track 세후 복리 성과 대조 원장 <span class="text-zinc-700 normal-case tracking-normal font-normal ml-2">(v9 · Dynamic Div Valve + DivPool SOFR + NPV Rebal · 자산A+신호A vs 자산B+신호B)</span></div>
+
+  <div class="overflow-x-auto rounded-lg border border-zinc-800/50 bg-zinc-950">
+    <table class="ledger w-full border-collapse text-left min-w-[960px]">
+      <thead class="bg-zinc-900/80 text-zinc-400">
+        <tr>
+          <th class="p-3 border-r border-zinc-800" rowspan="2">역사적 관통 환경</th>
+          <th class="p-2 text-center bg-amber-950/20 text-amber-400 border-r border-zinc-800" colspan="6">그룹 A 트랙 (자산A + 신호A)</th>
+          <th class="p-2 text-center bg-teal-950/20 text-teal-400 border-r border-zinc-800" colspan="6">그룹 B 트랙 (자산B + 신호B)</th>
+          <th class="p-2 text-center text-zinc-500" colspan="2">격차 (A−B)</th>
+        </tr>
+        <tr class="border-b border-zinc-800 bg-zinc-900/50 text-[10px]">
+          <th class="p-2 text-right text-amber-600">세전 CAGR</th>
+          <th class="p-2 text-right text-amber-400 font-bold">세후 CAGR</th>
+          <th class="p-2 text-right text-amber-500">Peak MDD</th>
+          <th class="p-2 text-right text-rose-400">휩쏘</th>
+          <th class="p-2 text-right text-amber-400">실패율</th>
+          <th class="p-2 text-right border-r border-zinc-800" style="color:#c084fc">Vol Drag</th>
+          <th class="p-2 text-right text-teal-600">세전 CAGR</th>
+          <th class="p-2 text-right text-teal-400 font-bold">세후 CAGR</th>
+          <th class="p-2 text-right text-teal-500">Peak MDD</th>
+          <th class="p-2 text-right text-rose-400">휩쏘</th>
+          <th class="p-2 text-right text-teal-400">실패율</th>
+          <th class="p-2 text-right border-r border-zinc-800" style="color:#c084fc">Vol Drag</th>
+          <th class="p-2 text-right">CAGR(세후)</th>
+          <th class="p-2 text-right">MDD</th>
+        </tr>
+      </thead>
+      <tbody id="ledger-body" class="divide-y divide-zinc-900 text-zinc-300">
+        <tr><td colspan="15" class="p-8 text-center text-zinc-600 text-xs font-sans">
+          데이터 로드 후 연산 실행 시 세후 성과 원장이 출력됩니다.
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tax breakdown -->
+  <div id="tax-breakdown-box" class="hidden space-y-2">
+    <div class="text-[11px] font-bold text-zinc-400 border-b border-zinc-800 pb-1">📋 자산별 세금 적용 명세</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <div class="text-[10px] text-amber-500 font-bold mb-2 mono">TRACK A · ASSET_SET_A</div>
+        <div id="tax-breakdown-A" class="grid grid-cols-2 gap-2 text-[10px] mono text-zinc-500"></div>
+      </div>
+      <div>
+        <div class="text-[10px] text-teal-500 font-bold mb-2 mono">TRACK B · ASSET_SET_B</div>
+        <div id="tax-breakdown-B" class="grid grid-cols-2 gap-2 text-[10px] mono text-zinc-500"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnostics -->
+  <div id="diagnostics-box" class="hidden bg-zinc-950/80 border border-zinc-900 rounded-lg p-4 mono text-[11px] text-zinc-400 space-y-2">
+    <div class="text-zinc-500 border-b border-zinc-800 pb-1 mb-1 font-sans text-xs font-bold text-zinc-400">📋 전술 타격대 스위칭 &amp; 변동성 감쇠 로그</div>
+    <div class="text-[10px] text-yellow-500/80 border border-yellow-900/30 bg-yellow-950/20 rounded px-3 py-1.5 mb-1">
+      ⚡ v10.0 Twin-Track · Dynamic Div Valve 활성 — 하락장(State=0): JEPI/GPIQ/QQQI 배당 → DivPool 격리 + SOFR 복리 | 상승장(State=1): 배당 <span style="color:#f87171">동일 계좌 내</span> tactical 자산으로 투하 (계좌 격벽 완전 차단) | 연말: <span style="color:#f87171">계좌별 독립</span> NPV 리밸런싱 | BOXX→SGOV 비상스위치 | GPIQ: 나스닥 100 축 β=0.85 합성 | QQQI: 고율 커버드콜 합성 | 트랙 A·B 완전 독립 장부
+    </div>
+    <div id="diag-1999">기점 1999: -</div>
+    <div id="diag-2006">기점 2006: -</div>
+    <div id="diag-2016">기점 2016: -</div>
+  </div>
+</section>
+
+
+<!-- ══ 07 OPTIMIZER ═══════════════════════════════════════════════ -->
+<section class="card rounded-xl p-5 space-y-5">
+  <div class="section-label"><span class="dot">◈</span> 07 · 파라미터 옵티마이저 — 231회 전수 그리드 스윕
+    <span class="text-zinc-700 normal-case tracking-normal font-normal ml-2">(ADX 10→30 × ATR 3.0→8.0)</span>
+  </div>
+
+  <!-- Alpha priority selectors -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wider">📉 Peak MDD</span>
+        <span class="text-[10px] text-zinc-600 mono">alpha_mdd</span>
+      </div>
+      <select id="opt-mdd-priority">
+        <option value="1">1순위 — 치명적 방어 (α = 0.100)</option>
+        <option value="2">2순위 — 높은 우선순위 (α = 0.030)</option>
+        <option value="3" selected>3순위 — 일반 반영 (α = 0.005)</option>
+        <option value="4">4순위 — 무시 / Off (α = 0.000)</option>
+      </select>
+      <p class="text-[10px] text-zinc-600 leading-relaxed">최대 낙폭 패널티 가중치. 1순위일수록 MDD 낮은 조합이 최상위 선정됩니다.</p>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">⚡ 휩쏘 손실</span>
+        <span class="text-[10px] text-zinc-600 mono">alpha_whip</span>
+      </div>
+      <select id="opt-whip-priority">
+        <option value="1">1순위 — 치명적 방어 (α = 0.005)</option>
+        <option value="2">2순위 — 높은 우선순위 (α = 0.001)</option>
+        <option value="3" selected>3순위 — 일반 반영 (α = 0.0002)</option>
+        <option value="4">4순위 — 무시 / Off (α = 0.000)</option>
+      </select>
+      <p class="text-[10px] text-zinc-600 leading-relaxed">허위 신호 누적 손실 패널티. 휩쏘가 잦은 파라미터를 하위 배치합니다.</p>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">❌ 실패율</span>
+        <span class="text-[10px] text-zinc-600 mono">alpha_fail</span>
+      </div>
+      <select id="opt-fail-priority">
+        <option value="1">1순위 — 치명적 방어 (α = 0.050)</option>
+        <option value="2">2순위 — 높은 우선순위 (α = 0.010)</option>
+        <option value="3" selected>3순위 — 일반 반영 (α = 0.002)</option>
+        <option value="4">4순위 — 무시 / Off (α = 0.000)</option>
+      </select>
+      <p class="text-[10px] text-zinc-600 leading-relaxed">트레이드 실패 비율 패널티. 활동성 마비 구간을 자동 배제합니다.</p>
+    </div>
+  </div>
+
+  <!-- Sweep config row -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-3">
+      <div class="text-[11px] font-bold text-zinc-300">스윕 기준점 설정</div>
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Twin-Track: target group dropdown -->
+        <div class="field">
+          <label class="lbl">최적화 타겟 자산군 선택</label>
+          <select id="opt-target-group">
+            <option value="A" selected>그룹 A 자산군 배열 기준 최적화</option>
+            <option value="B">그룹 B 자산군 배열 기준 최적화</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">기반 신호 파라미터 (MA/EMA/신호모드)</label>
+          <select id="opt-scenario">
+            <option value="A" selected>그룹 A 신호 파라미터 기반</option>
+            <option value="B">그룹 B 신호 파라미터 기반</option>
+          </select>
+        </div>
+        <div class="field col-span-2">
+          <label class="lbl">백테스트 기점</label>
+          <select id="opt-startdate">
+            <option value="1999-05-27">1999년 기점 (닷컴 꼭대기)</option>
+            <option value="2006-01-03" selected>2006년 기점 (리먼 관통)</option>
+            <option value="2016-01-04">2016년 기점 (10년 강세장)</option>
+          </select>
+        </div>
+      </div>
+      <div class="bg-zinc-900/50 border border-zinc-800/40 rounded-lg p-3 text-[10px] mono text-zinc-500 leading-relaxed">
+        <span class="text-amber-500 font-bold">스윕 영역:</span>
+        ADX 10→30 (1 단위, 21개) × ATR 3.0→8.0 (0.5 단위, 11개) =
+        <span class="text-sky-400 font-bold">231회</span> 독립 백테스트<br>
+        MA 유형·기간·EMA·신호모드는 선택 신호 파라미터 값을 고정 사용합니다.
+      </div>
+    </div>
+    <div class="bg-zinc-950 border border-zinc-800/50 rounded-xl p-4 space-y-3">
+      <div class="text-[11px] font-bold text-zinc-300">목적 함수 (Fitness Function)</div>
+      <div class="bg-zinc-900/50 border border-zinc-800/40 rounded-lg p-3 space-y-1.5 text-[10px] mono leading-relaxed">
+        <div class="text-zinc-400">P = 1 + (α_mdd·|MDD|) + (α_whip·|Whipsaw|) + (α_fail·FailRate)</div>
+        <div class="h-px bg-zinc-800 my-1"></div>
+        <div class="text-emerald-400">if CAGR_AfterTax ≥ 0 → Score = CAGR / P</div>
+        <div class="text-rose-400">if CAGR_AfterTax &lt; 0 → Score = CAGR × P <span class="text-zinc-600">(부호 역전 제어)</span></div>
+      </div>
+      <div class="text-[10px] text-zinc-600 leading-relaxed">
+        Vol Drag는 Score 연산에 개입하지 않으며 순수 진단 필드로 독립 출력됩니다.
+      </div>
+      <!-- Dynamic target group display -->
+      <div id="opt-target-display" class="bg-zinc-900/40 border border-zinc-800/40 rounded-lg px-3 py-2 text-[10px] mono text-zinc-500">
+        타겟 자산군: — (옵티마이저 실행 후 표시)
+      </div>
+    </div>
+  </div>
+
+  <!-- Optimize run button -->
+  <button id="btn-optimize" class="w-full py-3.5 px-4 rounded-xl text-sm uppercase tracking-widest cursor-pointer">
+    🔬 옵티마이저 · 231회 전수 그리드 스윕 엔진 가동
+  </button>
+
+  <!-- Progress bar -->
+  <div id="opt-progress-wrap" class="hidden space-y-2">
+    <div class="flex items-center justify-between">
+      <span id="opt-progress-label" class="text-[10px] mono text-zinc-500">연산 준비 중...</span>
+      <span id="opt-progress-pct" class="text-[10px] mono text-zinc-500">0 / 231</span>
+    </div>
+    <div class="h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+      <div id="opt-progress-bar" class="h-full bg-sky-500/80 rounded-full" style="width:0%;transition:width .2s;"></div>
+    </div>
+  </div>
+
+  <!-- Top 10 results table -->
+  <div id="opt-results-wrap" class="hidden space-y-3">
+    <div class="flex items-center gap-3 border-b border-zinc-800 pb-2">
+      <span class="text-[11px] font-bold text-sky-400">🏆 Top 10 최적 파라미터 조합</span>
+      <span id="opt-run-label" class="text-[10px] mono text-zinc-600"></span>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-zinc-800/50 bg-zinc-950">
+      <table class="ledger w-full border-collapse text-left" style="min-width:900px">
+        <thead class="bg-zinc-900/80 text-zinc-400">
+          <tr class="border-b border-zinc-800 text-[10px]" style="border-top:2px solid rgba(14,165,233,.35)">
+            <th class="p-2.5 text-center text-zinc-500">순위</th>
+            <th class="p-2.5 text-center text-amber-500">ADX 값</th>
+            <th class="p-2.5 text-center text-amber-400">ATR 승수</th>
+            <th class="p-2.5 text-right text-emerald-400">세후 CAGR</th>
+            <th class="p-2.5 text-right text-rose-400">Peak MDD</th>
+            <th class="p-2.5 text-right text-orange-400">휩쏘 누적</th>
+            <th class="p-2.5 text-right text-zinc-400">실패율</th>
+            <th class="p-2.5 text-right text-sky-400 font-bold">최종 Score</th>
+            <th class="p-2.5 text-right" style="color:#a855f7">Vol Drag</th>
+          </tr>
+        </thead>
+        <tbody id="opt-table-body" class="divide-y divide-zinc-900 text-zinc-300"></tbody>
+      </table>
+    </div>
+    <!-- All 231 results accordion -->
+    <details class="bg-zinc-950 border border-zinc-800/50 rounded-xl overflow-hidden">
+      <summary class="px-4 py-2.5 text-[10px] mono text-zinc-500 cursor-pointer hover:text-zinc-400 hover:bg-zinc-900/30 transition-colors select-none">
+        ▶ 전체 231회 연산 결과 (펼쳐서 보기)
+      </summary>
+      <div class="overflow-x-auto">
+        <table class="ledger w-full border-collapse text-left" style="min-width:900px">
+          <thead class="bg-zinc-900/80 text-zinc-400 sticky top-0">
+            <tr class="border-b border-zinc-800 text-[10px]">
+              <th class="p-2 text-center text-zinc-500">순위</th>
+              <th class="p-2 text-center text-amber-500">ADX</th>
+              <th class="p-2 text-center text-amber-400">ATR</th>
+              <th class="p-2 text-right text-emerald-400">세후 CAGR</th>
+              <th class="p-2 text-right text-rose-400">MDD</th>
+              <th class="p-2 text-right text-orange-400">휩쏘</th>
+              <th class="p-2 text-right text-zinc-400">실패율</th>
+              <th class="p-2 text-right text-sky-400">Score</th>
+              <th class="p-2 text-right" style="color:#a855f7">Vol Drag</th>
+            </tr>
+          </thead>
+          <tbody id="opt-all-body" class="divide-y divide-zinc-900 text-zinc-300"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<!-- ══ SCRIPT ══════════════════════════════════════════════════════ -->
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+let RAW_QQQ=[],RAW_SP500=[],RAW_JEPI=[],RAW_JEPIDIV=[],RAW_GPIQ=[],RAW_GPIQDIV=[];
+
+function logStatus(id,txt,cls){let e=document.getElementById(id);e.innerText=txt;e.className='text-[10px] mono '+cls;}
+function parseFile(f,cb){if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:true,complete:r=>{let d=r.data.map(row=>{let o={};for(let k in row){let ck=k.replace(/[\"']/g,'').trim();let v=row[k];o[ck]=(v!=null&&typeof v==='string')?v.replace(/[\"']/g,'').trim():String(v!=null?v:'');}return o;});cb(d);}});}
+
+document.getElementById('file-qqq').addEventListener('change',e=>parseFile(e.target.files[0],d=>{RAW_QQQ=d;logStatus('status-qqq',`로드 성공: ${d.length}행`,'text-emerald-500');}));
+document.getElementById('file-sp500').addEventListener('change',e=>{
+  let files=Array.from(e.target.files),combined=[],count=0;
+  files.forEach(f=>parseFile(f,d=>{combined=combined.concat(d);count++;
+    if(count===files.length){
+      RAW_SP500=combined.filter((v,i,a)=>a.findIndex(t=>t.Date===v.Date)===i).sort((a,b)=>new Date(a.Date)-new Date(b.Date));
+      logStatus('status-sp500',`통합 로드: ${RAW_SP500.length}행`,'text-emerald-500');
+    }
+  }));
+});
+document.getElementById('file-jepi').addEventListener('change',e=>parseFile(e.target.files[0],d=>{RAW_JEPI=d;logStatus('status-jepi',`실제 가격 장착: ${d.length}행`,'text-emerald-500');}));
+document.getElementById('file-jepidiv').addEventListener('change',e=>parseFile(e.target.files[0],d=>{RAW_JEPIDIV=d;logStatus('status-jepidiv',`실제 배당 장착: ${d.length}행`,'text-emerald-500');}));
+document.getElementById('file-gpiq').addEventListener('change',e=>parseFile(e.target.files[0],d=>{RAW_GPIQ=d;logStatus('status-gpiq',`실제 가격 장착: ${d.length}행`,'text-sky-500');}));
+document.getElementById('file-gpiqdiv').addEventListener('change',e=>parseFile(e.target.files[0],d=>{RAW_GPIQDIV=d;logStatus('status-gpiqdiv',`실제 배당 장착: ${d.length}행`,'text-sky-500');}));
+
+// ─── ASSET ROW MANAGER ──────────────────────────────────────────────────────
+let rowCounter=0;
+
+const ASSET_OPTIONS=[
+  {value:'QQQ',  label:'QQQ  (나스닥 100 1×)',  lev:1},
+  {value:'SPY',  label:'SPY  (S&P 500 1×)',      lev:1},
+  {value:'QLD',  label:'QLD  (나스닥 100 2×)',  lev:2},
+  {value:'TQQQ', label:'TQQQ (나스닥 100 3×)',  lev:3},
+  {value:'JEPI', label:'JEPI (S&P 커버드콜 인컴)',   lev:1},
+  {value:'GPIQ', label:'GPIQ (나스닥 100 가변 커버드콜)', lev:1},
+  {value:'QQQI', label:'QQQI (나스닥 100 고율 커버드콜 ~13%)', lev:1},
+  {value:'SGOV', label:'SGOV (T-Bill 주차 자산 ~5%)', lev:1},
+];
+const MODE_OPTIONS=[
+  {value:'permanent', label:'Buy & Hold (영구 거치)'},
+  {value:'tactical',  label:'Tactical Switching (MA/EMA/ADX/ATR)'},
+];
+const INCOME_OPTIONS=[
+  {value:'capital_gain', label:'자본이득'},
+  {value:'us_dividend',  label:'미국 ETF 배당'},
+  {value:'cdn_dividend', label:'캐나다 적격배당'},
+];
+
+function makeSelect(opts,defaultVal,onChange){
+  let s=document.createElement('select');
+  opts.forEach(o=>{
+    let op=document.createElement('option');
+    op.value=o.value; op.textContent=o.label;
+    if(o.value===defaultVal)op.selected=true;
+    s.appendChild(op);
+  });
+  if(onChange) s.addEventListener('change',onChange);
+  return s;
+}
+
+// addAssetRow(group, acct, cfg)
+// group = 'A' or 'B'; acct = 'TFSA'|'RRSP'|'TAXABLE'
+function addAssetRow(group, acct, cfg){
+  const id=++rowCounter;
+  const container=document.getElementById(`rows-${group}-${acct}`);
+
+  const row=document.createElement('div');
+  row.className='asset-row';
+  row.dataset.rowId=id;
+  row.dataset.acct=acct;
+  row.dataset.group=group;
+
+  const tickerSel=makeSelect(ASSET_OPTIONS, cfg?cfg.ticker:'QQQ', ()=>updateInnerTotals(group,acct));
+  tickerSel.dataset.field='ticker';
+
+  const modeSel=makeSelect(MODE_OPTIONS, cfg?cfg.mode:'permanent', ()=>updateInnerTotals(group,acct));
+  modeSel.dataset.field='mode';
+
+  const weightWrap=document.createElement('div');
+  const weightLbl=document.createElement('span');
+  weightLbl.className='lbl';
+  weightLbl.textContent='비중 (%)';
+  const weightInput=document.createElement('input');
+  weightInput.type='number';
+  weightInput.min='0'; weightInput.max='100'; weightInput.step='1';
+  weightInput.value=cfg?cfg.weight:0;
+  weightInput.dataset.field='weight';
+  weightInput.addEventListener('input',()=>updateInnerTotals(group,acct));
+  weightWrap.appendChild(weightLbl);
+  weightWrap.appendChild(weightInput);
+
+  let defaultIncome='capital_gain';
+  if(cfg&&cfg.incomeType) defaultIncome=cfg.incomeType;
+  const incomeSel=makeSelect(INCOME_OPTIONS, defaultIncome, ()=>updateInnerTotals(group,acct));
+  incomeSel.dataset.field='incomeType';
+
+  const delBtn=document.createElement('button');
+  delBtn.className='btn-del';
+  delBtn.innerHTML='✕';
+  delBtn.title='이 자산 행 삭제';
+  delBtn.addEventListener('click',()=>{
+    row.remove();
+    updateInnerTotals(group,acct);
+    updateGrandTotals(group);
+  });
+
+  function labeled(labelText, el){
+    const d=document.createElement('div');
+    const lbl=document.createElement('span');
+    lbl.className='lbl';
+    lbl.textContent=labelText;
+    d.appendChild(lbl);
+    d.appendChild(el);
+    return d;
+  }
+
+  row.appendChild(labeled('자산',tickerSel));
+  row.appendChild(labeled('운용 모드',modeSel));
+  row.appendChild(weightWrap);
+  row.appendChild(labeled('소득 유형',incomeSel));
+  row.appendChild(delBtn);
+
+  container.appendChild(row);
+  updateInnerTotals(group,acct);
+  updateGrandTotals(group);
+}
+
+function getRowsForAccount(group, acct){
+  const container=document.getElementById(`rows-${group}-${acct}`);
+  return Array.from(container.querySelectorAll('.asset-row'));
+}
+
+function parseRowData(row){
+  const get=(f)=>row.querySelector(`[data-field="${f}"]`);
+  return{
+    ticker:   get('ticker').value,
+    mode:     get('mode').value,
+    weight:   parseFloat(get('weight').value)||0,
+    incomeType: get('incomeType').value,
+  };
+}
+
+function updateInnerTotals(group, acct){
+  const rows=getRowsForAccount(group,acct);
+  const total=rows.reduce((s,r)=>s+(parseFloat(r.querySelector('[data-field="weight"]').value)||0),0);
+  const lbl=document.getElementById(`inner-total-${group}-${acct}`);
+  const bar=document.getElementById(`inner-bar-${group}-${acct}`);
+  lbl.textContent=total.toFixed(1)+'%';
+  lbl.className=Math.abs(total-100)<=0.1?'weight-ok':'weight-warn';
+  bar.style.width=Math.min(total,100)+'%';
+  updateGrandTotals(group);
+}
+
+function updateGrandTotals(group){
+  const accts=['TFSA','RRSP','TAXABLE'];
+  let grandTotal=0;
+  const acctTotals={};
+  accts.forEach(a=>{
+    acctTotals[a]=parseFloat(document.getElementById(`acct-weight-${group}-${a}`).value)||0;
+    grandTotal+=acctTotals[a];
+  });
+  document.getElementById(`grand-total-display-${group}`).textContent=`총합: ${grandTotal.toFixed(1)}%`;
+  document.getElementById(`grand-warning-${group}`).classList.toggle('hidden',Math.abs(grandTotal-100)<=0.1);
+
+  const gKey=group.toLowerCase();
+  accts.forEach(a=>{
+    let w=grandTotal>0?(acctTotals[a]/grandTotal*100):0;
+    document.getElementById(`gbar-${group}-${a.toLowerCase()}`).style.width=w+'%';
+    document.getElementById(`lbl-${group}-${a.toLowerCase()}-total`).textContent=acctTotals[a].toFixed(1)+'%';
+  });
+}
+
+function clearAllRows(group){
+  ['TFSA','RRSP','TAXABLE'].forEach(a=>{
+    document.getElementById(`rows-${group}-${a}`).innerHTML='';
+    updateInnerTotals(group,a);
+  });
+  updateGrandTotals(group);
+}
+
+function applyPreset(group, name){
+  clearAllRows(group);
+  if(name==='standard'){
+    document.getElementById(`acct-weight-${group}-TFSA`).value=45;
+    document.getElementById(`acct-weight-${group}-RRSP`).value=30;
+    document.getElementById(`acct-weight-${group}-TAXABLE`).value=25;
+    addAssetRow(group,'TFSA',   {ticker:'QLD', mode:'tactical',  weight:100, incomeType:'capital_gain'});
+    addAssetRow(group,'RRSP',   {ticker:'JEPI',mode:'permanent', weight:100, incomeType:'us_dividend'});
+    addAssetRow(group,'TAXABLE',{ticker:'QQQ', mode:'permanent', weight:100, incomeType:'capital_gain'});
+  } else if(name==='aggressive'){
+    document.getElementById(`acct-weight-${group}-TFSA`).value=60;
+    document.getElementById(`acct-weight-${group}-RRSP`).value=40;
+    document.getElementById(`acct-weight-${group}-TAXABLE`).value=0;
+    addAssetRow(group,'TFSA',{ticker:'QLD',  mode:'tactical', weight:60, incomeType:'capital_gain'});
+    addAssetRow(group,'TFSA',{ticker:'TQQQ', mode:'tactical', weight:40, incomeType:'capital_gain'});
+    addAssetRow(group,'RRSP',{ticker:'QLD',  mode:'tactical', weight:100,incomeType:'capital_gain'});
+  } else if(name==='income'){
+    document.getElementById(`acct-weight-${group}-TFSA`).value=30;
+    document.getElementById(`acct-weight-${group}-RRSP`).value=50;
+    document.getElementById(`acct-weight-${group}-TAXABLE`).value=20;
+    addAssetRow(group,'TFSA',   {ticker:'QQQ', mode:'permanent', weight:100, incomeType:'capital_gain'});
+    addAssetRow(group,'RRSP',   {ticker:'JEPI',mode:'permanent', weight:100, incomeType:'us_dividend'});
+    addAssetRow(group,'TAXABLE',{ticker:'JEPI',mode:'permanent', weight:100, incomeType:'us_dividend'});
+  }
+  updateGrandTotals(group);
+}
+
+// initialize both groups with standard preset on load
+window.addEventListener('DOMContentLoaded',()=>{
+  applyPreset('A','standard');
+  applyPreset('B','standard');
+  // Link opt-target-group to display update
+  document.getElementById('opt-target-group').addEventListener('change', updateOptTargetDisplay);
+  document.getElementById('opt-scenario').addEventListener('change', updateOptTargetDisplay);
+  updateOptTargetDisplay();
+});
+
+function updateOptTargetDisplay(){
+  const tg = document.getElementById('opt-target-group').value;
+  const sc = document.getElementById('opt-scenario').value;
+  const el = document.getElementById('opt-target-display');
+  const tgLabel = tg === 'A' ? '<span style="color:#f59e0b">그룹 A 자산군 (ASSET_SET_A)</span>' : '<span style="color:#14b8a6">그룹 B 자산군 (ASSET_SET_B)</span>';
+  const scLabel = sc === 'A' ? '<span style="color:#f59e0b">SIGNAL_A</span>' : '<span style="color:#14b8a6">SIGNAL_B</span>';
+  el.innerHTML = `타겟 자산군: ${tgLabel} &nbsp;|&nbsp; 신호 기반: ${scLabel}`;
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+function normalizeDate(s){
+  if(!s)return null;
+  if(s.includes('-'))return s;
+  if(s.includes('/')){let p=s.split('/');if(p[0].length===4)return`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;return`${p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`;}
+  let pd=new Date(s);if(isNaN(pd.getTime()))return null;
+  return`${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,'0')}-${String(pd.getDate()).padStart(2,'0')}`;
+}
+function cleanNum(v){if(!v)return 0;return parseFloat(String(v).replace(/,/g,''))||0;}
+
+function makePRNG(seed){
+  let s=seed>>>0;
+  return()=>{s+=0x6D2B79F5;let t=Math.imul(s^s>>>15,1|s);t^=t+Math.imul(t^t>>>7,61|t);return((t^t>>>14)>>>0)/4294967296;};
+}
+
+// ─── PARSE ALLOCATION FROM UI (group-parameterized) ─────────────────────────
+// groupChar = 'A' | 'B'
+function parseAllocation(groupChar){
+  const accts=['TFSA','RRSP','TAXABLE'];
+  const acctWeights={};
+  let grandTotal=0;
+  accts.forEach(a=>{
+    acctWeights[a]=parseFloat(document.getElementById(`acct-weight-${groupChar}-${a}`).value)||0;
+    grandTotal+=acctWeights[a];
+  });
+
+  let assets=[];
+  accts.forEach(acct=>{
+    const rows=getRowsForAccount(groupChar,acct);
+    rows.forEach(row=>{
+      const d=parseRowData(row);
+      const absW=(d.weight/100)*(acctWeights[acct]/100);
+      assets.push({
+        ticker:     d.ticker,
+        mode:       d.mode,
+        account:    acct,
+        incomeType: d.incomeType,
+        innerW:     d.weight/100,
+        absW:       absW,
+      });
+    });
+  });
+  return{assets, acctWeights, grandTotal};
+}
+
+// ─── VALIDATION ─────────────────────────────────────────────────────────────
+function validateGroup(groupChar){
+  const {assets, grandTotal} = parseAllocation(groupChar);
+  if(Math.abs(grandTotal-100)>0.1){
+    alert(`그룹 ${groupChar} 계좌 비중 합계 ${grandTotal.toFixed(1)}% → 100%로 맞춰주세요.`);
+    return null;
+  }
+  if(assets.length===0){
+    alert(`그룹 ${groupChar}에 최소 1개 자산을 추가해주세요.`);
+    return null;
+  }
+  let innerOk=true;
+  ['TFSA','RRSP','TAXABLE'].forEach(a=>{
+    const acctW=parseFloat(document.getElementById(`acct-weight-${groupChar}-${a}`).value)||0;
+    if(acctW>0){
+      const rows=getRowsForAccount(groupChar,a);
+      if(rows.length>0){
+        const innerSum=rows.reduce((s,r)=>s+(parseFloat(r.querySelector('[data-field="weight"]').value)||0),0);
+        if(Math.abs(innerSum-100)>0.5){
+          innerOk=false;
+          alert(`그룹 ${groupChar} · ${a} 계좌 내 자산 비중 합계 ${innerSum.toFixed(1)}% → 100%로 맞춰주세요.`);
+        }
+      }
+    }
+  });
+  if(!innerOk) return null;
+  return assets;
+}
+
+// ─── TAX ENGINE ─────────────────────────────────────────────────────────────
+function afterTaxReturn(grossRet,account,incomeType,taxP){
+  if(account==='TFSA'){
+    if(incomeType==='us_dividend'){let wht=taxP.wht/100;return grossRet*(1-wht);}
+    return grossRet;
+  }
+  if(account==='RRSP') return grossRet; // deferred
+  if(incomeType==='us_dividend'){let wht=taxP.wht/100,ca=taxP.caDivRate/100;return grossRet*(1-wht)*(1-ca);}
+  if(incomeType==='cdn_dividend'){return grossRet*(1-taxP.cdnDivRate/100);}
+  return grossRet;
+}
+
+// ─── INDICATOR BUILDER ──────────────────────────────────────────────────────
+function buildIndicators(prices,highs,lows,maType,maPeriod,emaPeriod){
+  const n=prices.length;
+  let trendMA=new Array(n).fill(null);
+  let baseEMA=new Array(n).fill(null);
+  let tr=new Array(n).fill(0);
+  let atr14=new Array(n).fill(0);
+  let pDM=new Array(n).fill(0),mDM=new Array(n).fill(0);
+  let pDMs=new Array(n).fill(0),mDMs=new Array(n).fill(0),trs=new Array(n).fill(0);
+  let dx=new Array(n).fill(0),adx=new Array(n).fill(0);
+
+  let alphaB=2/(emaPeriod+1);
+  baseEMA[0]=prices[0];
+  for(let i=1;i<n;i++) baseEMA[i]=prices[i]*alphaB+baseEMA[i-1]*(1-alphaB);
+
+  if(maType==='SMA'){
+    for(let i=maPeriod-1;i<n;i++){
+      let s=0;for(let j=i-maPeriod+1;j<=i;j++)s+=prices[j];
+      trendMA[i]=s/maPeriod;
+    }
+  } else {
+    let alphaT=2/(maPeriod+1);
+    trendMA[0]=prices[0];
+    for(let i=1;i<n;i++) trendMA[i]=prices[i]*alphaT+trendMA[i-1]*(1-alphaT);
+    for(let i=0;i<maPeriod-1;i++) trendMA[i]=null;
+  }
+
+  tr[0]=highs[0]-lows[0];
+  for(let i=1;i<n;i++) tr[i]=Math.max(highs[i]-lows[i],Math.abs(highs[i]-prices[i-1]),Math.abs(lows[i]-prices[i-1]));
+  if(n>14){let s=0;for(let i=1;i<=14;i++)s+=tr[i];atr14[14]=s/14;for(let i=15;i<n;i++)atr14[i]=(atr14[i-1]*13+tr[i])/14;}
+
+  for(let i=1;i<n;i++){let hd=highs[i]-highs[i-1],ld=lows[i-1]-lows[i];pDM[i]=(hd>ld&&hd>0)?hd:0;mDM[i]=(ld>hd&&ld>0)?ld:0;}
+  if(n>14){
+    let ps=0,ms=0,ts=0;for(let i=1;i<=14;i++){ps+=pDM[i];ms+=mDM[i];ts+=tr[i];}
+    pDMs[14]=ps;mDMs[14]=ms;trs[14]=ts;
+    for(let i=15;i<n;i++){pDMs[i]=pDMs[i-1]-pDMs[i-1]/14+pDM[i];mDMs[i]=mDMs[i-1]-mDMs[i-1]/14+mDM[i];trs[i]=trs[i-1]-trs[i-1]/14+tr[i];}
+  }
+  for(let i=14;i<n;i++){let safe=trs[i]||1,pDI=100*(pDMs[i]/safe),mDI=100*(mDMs[i]/safe),ds=pDI+mDI;dx[i]=100*(Math.abs(pDI-mDI)/(ds||1));}
+  if(n>28){let s=0;for(let i=14;i<28;i++)s+=dx[i];adx[27]=s/14;for(let i=28;i<n;i++)adx[i]=(adx[i-1]*13+dx[i])/14;}
+
+  return{trendMA,baseEMA,atr14,adx};
+}
+
+// ─── MAIN PIPELINE ──────────────────────────────────────────────────────────
+document.getElementById('btn-run').addEventListener('click',()=>{
+  if(RAW_QQQ.length===0||RAW_SP500.length===0){alert("QQQ와 SP500 데이터를 먼저 로드해주세요.");return;}
+
+  const assetsA = validateGroup('A');
+  if(!assetsA) return;
+  const assetsB = validateGroup('B');
+  if(!assetsB) return;
+
+  executeBacktestPipeline(assetsA, assetsB);
+});
+
+function buildCommonMatrix(qqqTimeline, prices, highs, lows, sp500FF){
+  const n=qqqTimeline.length;
+  const SOFR_RATE=(+document.getElementById('sofr-rate').value)/100;
+  const incSynthYield=(+document.getElementById('inc-synth-yield').value)||9.0;
+  const JEPI_BETA=0.5477;
+  const JEPI_SYNTH_DAILY=(incSynthYield/100*0.925)/252;
+  const GPIQ_BETA=0.85;
+  const GPIQ_SYNTH_DAILY=(incSynthYield/100*0.925)/252;
+  const BOXX_RATE=0.03;
+  const LEV_SPREAD={QLD:0.95,TQQQ:1.0};
+
+  // ── JEPI TR returns
+  let jepiTRRetMap={};
+  if(RAW_JEPI.length>0&&RAW_JEPIDIV.length>0){
+    let jp=RAW_JEPI.map(r=>({date:normalizeDate(r.Date),price:cleanNum(r.Price)})).filter(r=>r.date).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    let jd=jp.map(r=>r.date);
+    let dm={};
+    RAW_JEPIDIV.forEach(r=>{let ex=normalizeDate(r.Date||r["Ex-Dividend Date"]);if(!ex)return;let amt=cleanNum(r.Dividend||r.Dividends||r.Amount||r['Cash Amount']||0);if(!amt)return;let tgt=jd.find(d=>d===ex)||jd.find(d=>d>=ex)||jd[jd.length-1];if(tgt)dm[tgt]=(dm[tgt]||0)+amt;});
+    let shares=1,vals=[];
+    for(let i=0;i<jp.length;i++){let d=jp[i].date;if(i>0&&dm[d])shares+=(shares*dm[d]*0.925)/jp[i].price;vals.push(shares*jp[i].price);}
+    for(let i=1;i<jp.length;i++) jepiTRRetMap[jp[i].date]=(vals[i]-vals[i-1])/vals[i-1];
+  }
+
+  // ── GPIQ TR returns (QQQ-axis, 실제 데이터 격벽일: 2023-10-24)
+  let gpiqTRRetMap={};
+  if(RAW_GPIQ.length>0&&RAW_GPIQDIV.length>0){
+    let gp=RAW_GPIQ.map(r=>({date:normalizeDate(r.Date),price:cleanNum(r.Price)})).filter(r=>r.date).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    let gd=gp.map(r=>r.date);
+    let gdm={};
+    RAW_GPIQDIV.forEach(r=>{let ex=normalizeDate(r.Date||r["Ex-Dividend Date"]);if(!ex)return;let amt=cleanNum(r.Dividend||r.Dividends||r.Amount||r['Cash Amount']||0);if(!amt)return;let tgt=gd.find(d=>d===ex)||gd.find(d=>d>=ex)||gd[gd.length-1];if(tgt)gdm[tgt]=(gdm[tgt]||0)+amt;});
+    let gshares=1,gvals=[];
+    for(let i=0;i<gp.length;i++){let d=gp[i].date;if(i>0&&gdm[d])gshares+=(gshares*gdm[d]*0.925)/gp[i].price;gvals.push(gshares*gp[i].price);}
+    for(let i=1;i<gp.length;i++) gpiqTRRetMap[gp[i].date]=(gvals[i]-gvals[i-1])/gvals[i-1];
+  }
+
+  function levSynth(qqqRet,lev,spreadAnnual){
+    const levCostDaily=(spreadAnnual/100+(lev-1)*SOFR_RATE)/252;
+    return lev*qqqRet-levCostDaily;
+  }
+
+  let matrix=[];
+  for(let i=0;i<n;i++){
+    let d=qqqTimeline[i].date;
+    let qqqRet=i===0?0:(prices[i]-prices[i-1])/prices[i-1];
+    let sp500P=sp500FF[i],prevSp=i===0?sp500P:sp500FF[i-1];
+    let sp500Ret=(prevSp&&sp500P)?(sp500P-prevSp)/prevSp:0;
+    let hasRealJepi=(jepiTRRetMap[d]!==undefined)&&(d>="2020-05-26");
+    let jepiFinalRet=hasRealJepi?jepiTRRetMap[d]:(JEPI_BETA*sp500Ret+JEPI_SYNTH_DAILY);
+    let hasRealGpiq=(gpiqTRRetMap[d]!==undefined)&&(d>="2023-10-24");
+    let gpiqFinalRet=hasRealGpiq?gpiqTRRetMap[d]:(GPIQ_BETA*qqqRet+GPIQ_SYNTH_DAILY);
+    let boxxRet=BOXX_RATE/252;
+    let qldRet  =levSynth(qqqRet,2,LEV_SPREAD.QLD);
+    let tqqqRet =levSynth(qqqRet,3,LEV_SPREAD.TQQQ);
+    matrix.push({date:d,price:prices[i],high:highs[i],low:lows[i],
+      qqqRet,sp500Ret,jepiFinalRet,gpiqFinalRet,qldRet,tqqqRet,boxxRet,
+      state:0,prevState:0});
+  }
+  return matrix;
+}
+
+function executeBacktestPipeline(assetsA, assetsB){
+  // ── QQQ timeline
+  let qqqTimeline=RAW_QQQ.map(r=>({date:normalizeDate(r.Date||r["Ex-Dividend Date"]),price:cleanNum(r.Price),high:cleanNum(r.High),low:cleanNum(r.Low)})).filter(r=>r.date).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let n=qqqTimeline.length;
+
+  let sp500Map={};RAW_SP500.forEach(r=>{let d=normalizeDate(r.Date);if(d)sp500Map[d]=cleanNum(r.Price);});
+  let sp500FF=new Array(n).fill(null);let last500=null;
+  for(let i=0;i<n;i++){let d=qqqTimeline[i].date;if(sp500Map[d]!==undefined)last500=sp500Map[d];sp500FF[i]=last500;}
+
+  let prices=qqqTimeline.map(r=>r.price);
+  let highs=qqqTimeline.map(r=>r.high);
+  let lows=qqqTimeline.map(r=>r.low);
+
+  const matrix=buildCommonMatrix(qqqTimeline,prices,highs,lows,sp500FF);
+
+  const taxP={
+    mtr:             +document.getElementById('tax-mtr').value,
+    cgRate:          +document.getElementById('tax-cg').value,
+    cdnDivRate:      +document.getElementById('tax-cdn-div').value,
+    caDivRate:       +document.getElementById('tax-ca-div').value,
+    wht:             +document.getElementById('tax-wht').value,
+    rrspWithdrawal:  +document.getElementById('tax-rrsp-withdrawal').value,
+  };
+  const stressEnabled=document.getElementById('stress-enabled').checked;
+  const stressParams={
+    prob:   +document.getElementById('stress-prob').value/100,
+    gap:    +document.getElementById('stress-gap').value/100,
+    slip:   +document.getElementById('stress-slip').value/10000,
+    seed:   +document.getElementById('stress-seed').value,
+  };
+
+  // ── MA/signal config — Track A uses SIGNAL_A, Track B uses SIGNAL_B independently
+  let cfgA={maType:document.getElementById('sc-a-ma-type').value,maPeriod:+document.getElementById('sc-a-ma-period').value,emaPeriod:+document.getElementById('sc-a-ema-period').value,adxThresh:+document.getElementById('sc-a-adx').value,atrMult:+document.getElementById('sc-a-atr').value,signalMode:document.getElementById('sc-a-signal-mode').value};
+  let cfgB={maType:document.getElementById('sc-b-ma-type').value,maPeriod:+document.getElementById('sc-b-ma-period').value,emaPeriod:+document.getElementById('sc-b-ema-period').value,adxThresh:+document.getElementById('sc-b-adx').value,atrMult:+document.getElementById('sc-b-atr').value,signalMode:document.getElementById('sc-b-signal-mode').value};
+
+  // Track A uses SIGNAL_A indicators, Track B uses SIGNAL_B indicators
+  let indA=buildIndicators(prices,highs,lows,cfgA.maType,cfgA.maPeriod,cfgA.emaPeriod);
+  let indB=buildIndicators(prices,highs,lows,cfgB.maType,cfgB.maPeriod,cfgB.emaPeriod);
+
+  let milestones=[
+    {date:"1999-05-27",label:"1999년 기점 (닷컴 꼭대기 관통)"},
+    {date:"2006-01-03",label:"2006년 기점 (리먼 위기 정면 관통)"},
+    {date:"2016-01-04",label:"2016년 기점 (10년 장기 강세장)"}
+  ];
+
+  document.getElementById('diagnostics-box').classList.remove('hidden');
+
+  // Tax breakdown for both groups
+  function renderTaxBreakdown(allocAssets, groupChar, taxP){
+    const tbd=document.getElementById(`tax-breakdown-${groupChar}`);
+    tbd.innerHTML=allocAssets.map(a=>{
+      const acctLabel={TFSA:'🟢 TFSA',RRSP:'🔵 RRSP',TAXABLE:'🟡 과세계좌'}[a.account];
+      const incLabel={capital_gain:'자본이득',us_dividend:'미국 ETF 배당',cdn_dividend:'캐나다 적격배당'}[a.incomeType];
+      const modeLabel=a.mode==='permanent'?'B&H':'Tactical';
+      const isIncome=(a.ticker==='JEPI'||a.ticker==='GPIQ');
+      const axisLabel=a.ticker==='GPIQ'?'QQQ-axis β=0.85':'S&P-axis β=0.55';
+      let note='';
+      if(a.account==='TFSA'){note=a.incomeType==='us_dividend'?`WHT ${taxP.wht}% → 비과세`:'전액 비과세';}
+      else if(a.account==='RRSP'){note=`성장 비과세 → 인출세 ${taxP.rrspWithdrawal}%`+(a.incomeType==='us_dividend'?' (WHT 면제)':'');}
+      else{if(a.incomeType==='us_dividend')note=`WHT ${taxP.wht}% + CA세 ${taxP.caDivRate}%`;else if(a.incomeType==='capital_gain')note=`CG세 ${taxP.cgRate}% (리밸 시)`;else note=`캐나다 배당세 ${taxP.cdnDivRate}%`;}
+      return`<div class="bg-zinc-900/50 border border-zinc-800/40 rounded-lg p-3 space-y-1">
+        <div class="text-zinc-300 font-bold">${a.ticker} <span class="text-zinc-600 font-normal">[${modeLabel}]</span>${isIncome?`<span class="text-sky-600/70 font-normal text-[9px] ml-1">${axisLabel}</span>`:''}</div>
+        <div class="text-zinc-500">${acctLabel} · ${incLabel}</div>
+        <div class="text-zinc-600">포트비중 ${(a.absW*100).toFixed(1)}%</div>
+        <div class="text-amber-500/80">${note}</div>
+      </div>`;
+    }).join('');
+  }
+
+  renderTaxBreakdown(assetsA,'A',taxP);
+  renderTaxBreakdown(assetsB,'B',taxP);
+  document.getElementById('tax-breakdown-box').classList.remove('hidden');
+
+  let vdLines=[];
+  let html='';
+
+  milestones.forEach(m=>{
+    // ── TWIN-TRACK: Track A = assetsA + indA/cfgA; Track B = assetsB + indB/cfgB
+    let resA=runEngineCore(matrix,m.date,indA,cfgA,assetsA,taxP,stressEnabled,stressParams);
+    let resB=runEngineCore(matrix,m.date,indB,cfgB,assetsB,taxP,stressEnabled,stressParams);
+
+    let cagrDiff=resA.cagrAfterTax-resB.cagrAfterTax;
+    let mddDiff=resA.mdd-resB.mdd;
+    let aFail=resA.trades>0?((resA.trades-resA.wins)/resA.trades*100):0;
+    let bFail=resB.trades>0?((resB.trades-resB.wins)/resB.trades*100):0;
+
+    vdLines.push(`${m.label}: A=${resA.volDrag.toFixed(2)}%  B=${resB.volDrag.toFixed(2)}%`);
+
+    html+=`<tr class="hover:bg-zinc-900/20 transition-colors">
+      <td class="p-3 border-r border-zinc-800">
+        <div class="font-semibold text-zinc-200 text-xs font-sans">${m.label}</div>
+        <div class="text-[10px] text-zinc-600 mono">from ${m.date}${stressEnabled?' 🔴 STRESS':''} · SOFR ${(+document.getElementById('sofr-rate').value).toFixed(1)}%</div>
+      </td>
+      <td class="p-2 text-right text-amber-600 text-[11px]">${resA.cagrPreTax.toFixed(2)}%</td>
+      <td class="p-2 text-right text-amber-400 font-bold">${resA.cagrAfterTax.toFixed(2)}%</td>
+      <td class="p-2 text-right text-amber-500 text-[11px]">${resA.mdd.toFixed(2)}%</td>
+      <td class="p-2 text-right text-rose-400 text-[11px]">${resA.whipsaw.toFixed(2)}%</td>
+      <td class="p-2 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${aFail>=50?'bg-rose-900/60 text-rose-300':'bg-zinc-800/60 text-zinc-400'}">${aFail.toFixed(1)}%</span></td>
+      <td class="p-2 text-right border-r border-zinc-800 text-[11px]" style="color:#a855f7">${resA.volDrag.toFixed(2)}%</td>
+      <td class="p-2 text-right text-teal-600 text-[11px]">${resB.cagrPreTax.toFixed(2)}%</td>
+      <td class="p-2 text-right text-teal-400 font-bold">${resB.cagrAfterTax.toFixed(2)}%</td>
+      <td class="p-2 text-right text-teal-500 text-[11px]">${resB.mdd.toFixed(2)}%</td>
+      <td class="p-2 text-right text-rose-400 text-[11px]">${resB.whipsaw.toFixed(2)}%</td>
+      <td class="p-2 text-right"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${bFail>=50?'bg-rose-900/60 text-rose-300':'bg-zinc-800/60 text-zinc-400'}">${bFail.toFixed(1)}%</span></td>
+      <td class="p-2 text-right border-r border-zinc-800 text-[11px]" style="color:#a855f7">${resB.volDrag.toFixed(2)}%</td>
+      <td class="p-2 text-right font-bold text-[11px] ${cagrDiff>=0?'text-emerald-400':'text-rose-500'}">${cagrDiff>=0?'+':''}${cagrDiff.toFixed(2)}%p</td>
+      <td class="p-2 text-right text-[11px] ${mddDiff>=0?'text-emerald-400':'text-rose-500'}">${mddDiff>=0?'+':''}${mddDiff.toFixed(2)}%p</td>
+    </tr>`;
+
+    let yr=m.date.split('-')[0];
+    let el=document.getElementById(`diag-${yr}`);
+    if(el) el.innerHTML=`<span class="text-zinc-500">${m.label}</span> — <span class="text-amber-400">A(자산A+신호A):</span> ${resA.trades}회 | 휩쏘 <span class="text-rose-400">${resA.whipsaw.toFixed(2)}%</span> | 실패 ${aFail.toFixed(1)}% | VolDrag <span style="color:#a855f7">${resA.volDrag.toFixed(2)}%</span> | 세전 ${resA.cagrPreTax.toFixed(2)}% → <span class="text-amber-400">세후 ${resA.cagrAfterTax.toFixed(2)}%</span> &nbsp;|&nbsp; <span class="text-teal-400">B(자산B+신호B):</span> ${resB.trades}회 | 휩쏘 <span class="text-rose-400">${resB.whipsaw.toFixed(2)}%</span> | 실패 ${bFail.toFixed(1)}% | VolDrag <span style="color:#a855f7">${resB.volDrag.toFixed(2)}%</span> | 세전 ${resB.cagrPreTax.toFixed(2)}% → <span class="text-teal-400">세후 ${resB.cagrAfterTax.toFixed(2)}%</span>`;
+  });
+
+  document.getElementById('ledger-body').innerHTML=html;
+  document.getElementById('voldecay-preview').innerHTML='<span style="color:#a855f7">Vol Drag 누적:</span><br>'+vdLines.map(l=>`&nbsp;${l}`).join('<br>');
+}
+
+// ─── GLOBAL HELPERS (used by runEngineCore) ──────────────────────────────────
+function getLev(ticker){ return ticker==='TQQQ'?3:ticker==='QLD'?2:1; }
+function getGrossReturn(row, ticker, mode, state){
+  if(mode==='tactical'&&state===0){
+    // BOXX→SGOV 스위치: 활성화 시 SGOV 수익률, 비활성 시 BOXX 고정
+    const useSGOV = document.getElementById('boxx-sgov-switch').checked;
+    if(useSGOV){
+      const sgovAnnual = (+document.getElementById('sgov-rate').value || 5.1) / 100;
+      return sgovAnnual / 252;
+    }
+    return row.boxxRet;
+  }
+  switch(ticker){
+    case 'QQQ':  return row.qqqRet;
+    case 'SPY':  return row.sp500Ret;
+    case 'QLD':  return row.qldRet;
+    case 'TQQQ': return row.tqqqRet;
+    case 'JEPI': return row.jepiFinalRet;
+    case 'GPIQ': return row.gpiqFinalRet;
+    case 'QQQI': return row.gpiqFinalRet; // QQQ축 고율 커버드콜: GPIQ 합성 모델 공유 (β=0.85)
+    case 'SGOV': {
+      // 주차용 SGOV: 항상 T-Bill 수익률
+      const sgovAnnual = (+document.getElementById('sgov-rate').value || 5.1) / 100;
+      return sgovAnnual / 252;
+    }
+    default:     return row.qqqRet;
+  }
+}
+
+// ─── ENGINE CORE v8.0 — Dynamic Dividend Valve ──────────────────────────────
+// Δv8 vs v7:
+//   [1] JEPI 배당금 → State 신호 기반 동적 라우팅 (하락장: DivPool 격리, 상승장: QLD 집중 투하)
+//   [2] DivPool 잔액에 매 영업일 SOFR 이자 복리 적용 (유휴 총알 절대량 극대화)
+//   [3] 연말 리밸런싱: DivPool 취득분 포함 전체 NPV 기준 목표 비율 강제 재정렬
+// v9: 완전 독립 Twin-Track — assetsA 또는 assetsB 인자로 구분
+function runEngineCore(matrix, startDate, ind, cfg, allocAssets, taxP, stressEnabled, stressP){
+  let sub=matrix.filter(r=>r.date>=startDate).map(r=>({...r}));
+  if(sub.length===0) return{cagrPreTax:0,cagrAfterTax:0,mdd:0,trades:0,wins:0,whipsaw:0,winRate:0,volDrag:0};
+
+  let globalStart=matrix.findIndex(r=>r.date>=startDate);
+
+  let inPos=false, highPeak=0;
+
+  for(let i=0;i<sub.length;i++){
+    let gi=globalStart+i;
+    let close=sub[i].price;
+    let ma=ind.trendMA[gi];
+    let ema=ind.baseEMA[gi];
+    let adxV=ind.adx[gi];
+    let atrV=ind.atr14[gi];
+
+    sub[i].prevState=i===0?0:sub[i-1].state;
+
+    if(ma===null||ema===null||atrV===0){sub[i].state=0;continue;}
+
+    let maAbove=ma>=ema;
+    let adxOk=adxV>=cfg.adxThresh;
+    let entrySignal=(cfg.signalMode==='AND')?(maAbove&&adxOk):(cfg.signalMode==='MA_ONLY'?maAbove:adxOk);
+
+    if(!inPos){
+      if(entrySignal){inPos=true;highPeak=close;sub[i].state=1;}
+      else sub[i].state=0;
+    } else {
+      if(close>highPeak)highPeak=close;
+      let stop=highPeak-cfg.atrMult*atrV;
+      let exitSignal=(!maAbove)||(close<stop);
+      if(exitSignal){inPos=false;sub[i].state=0;}
+      else sub[i].state=1;
+    }
+  }
+
+  let assetValsAT  = allocAssets.map(a=>a.absW);
+  let assetValsPre = allocAssets.map(a=>a.absW);
+  let assetCostBasis = allocAssets.map(a=>a.absW);
+
+  let divPoolAT  = 0;
+  let divPoolPre = 0;
+
+  const SOFR_DAILY = (+document.getElementById('sofr-rate').value) / 100 / 252;
+
+  function findTacticalLevIdx(){
+    for(let idx=0;idx<allocAssets.length;idx++){
+      if(allocAssets[idx].mode==='tactical'&&getLev(allocAssets[idx].ticker)>1) return idx;
+    }
+    for(let idx=0;idx<allocAssets.length;idx++){
+      if(allocAssets[idx].mode==='tactical') return idx;
+    }
+    return 0;
+  }
+
+  // [BUG FIX v10] 계좌별 독립 배당 투하 타겟 탐색
+  // income 자산과 동일 계좌(account) 내의 tactical lev 자산을 우선 탐색.
+  // 동일 계좌에 없으면 전체 중 첫 번째 tactical lev 자산 사용 (계좌 국경 침범 방지).
+  function findDivTargetIdx(srcAccount){
+    // 1순위: 동일 계좌 내 tactical lev>1
+    for(let idx=0;idx<allocAssets.length;idx++){
+      if(allocAssets[idx].account===srcAccount&&allocAssets[idx].mode==='tactical'&&getLev(allocAssets[idx].ticker)>1) return idx;
+    }
+    // 2순위: 동일 계좌 내 tactical (lev=1 포함)
+    for(let idx=0;idx<allocAssets.length;idx++){
+      if(allocAssets[idx].account===srcAccount&&allocAssets[idx].mode==='tactical') return idx;
+    }
+    // 3순위: 동일 계좌 내 어떤 자산이든
+    for(let idx=0;idx<allocAssets.length;idx++){
+      if(allocAssets[idx].account===srcAccount) return idx;
+    }
+    // 최후 fallback: 전체 첫 번째 (계좌 격벽 붕괴 경고 - 이 경로는 비정상)
+    return 0;
+  }
+
+  const tacLevIdx = findTacticalLevIdx(); // DivPool 투하 시 전체 대표 타겟(동일 계좌 보장 없는 DivPool에만 사용)
+
+  let valsAT=[], valsPre=[];
+  let volDragCumul=0;
+  let retWindow=[];
+
+  let tradesLog=[], whipsawSum=0;
+  let tradeEntryPortVal=null, prevGlobalState=0;
+
+  let rngGap=stressEnabled?makePRNG(stressP.seed+1):null;
+  let dailyGapProb=stressEnabled?1-Math.pow(1-stressP.prob,1/252):0;
+
+  const incSynthYield = (+document.getElementById('inc-synth-yield').value) || 9.0;
+  const JEPI_DIV_DAILY_GROSS = (incSynthYield / 100 * 0.925) / 252;
+  const GPIQ_DIV_DAILY_GROSS = (incSynthYield / 100 * 0.925) / 252;
+
+  for(let i=0;i<sub.length;i++){
+    const row=sub[i];
+    const state=row.prevState;
+
+    const isLastDay=(i===sub.length-1)||(new Date(sub[i+1].date).getFullYear()!==new Date(row.date).getFullYear());
+
+    let gapShock=0;
+    if(stressEnabled&&state===1&&rngGap()<=dailyGapProb) gapShock=stressP.gap;
+    let slipCost=0;
+    if(stressEnabled&&(row.state!==row.prevState)) slipCost=stressP.slip;
+
+    if(document.getElementById('voldecay-enabled').checked){
+      retWindow.push(row.qqqRet);
+      if(retWindow.length>21) retWindow.shift();
+      if(retWindow.length>=5){
+        let mean=retWindow.reduce((a,b)=>a+b,0)/retWindow.length;
+        let variance=retWindow.reduce((a,b)=>a+(b-mean)**2,0)/retWindow.length;
+        allocAssets.forEach((a,idx)=>{
+          const lev=getLev(a.ticker);
+          if(lev>1&&a.mode==='tactical'&&state===1){
+            volDragCumul+=0.5*(lev-1)**2*variance*assetValsAT[idx];
+          }
+        });
+      }
+    }
+
+    if(prevGlobalState===0&&state===1&&tradeEntryPortVal===null){
+      tradeEntryPortVal=assetValsAT.reduce((s,v)=>s+v,0)+divPoolAT;
+    }
+
+    // [v8 §2] DivPool SOFR 이자 복리 누적
+    if(divPoolAT > 0){
+      divPoolAT  *= (1 + SOFR_DAILY);
+      divPoolPre *= (1 + SOFR_DAILY);
+    }
+
+    // [v8 §1] 배당 밸브: 상승장 진입 시 DivPool 전탄 QLD 슬롯으로 강제 투하
+    if(prevGlobalState===0 && state===1 && divPoolAT > 0){
+      assetValsAT[tacLevIdx]  += divPoolAT;
+      assetValsPre[tacLevIdx] += divPoolPre;
+      divPoolAT  = 0;
+      divPoolPre = 0;
+    }
+
+    allocAssets.forEach((a,idx)=>{
+      let grossRet=getGrossReturn(row, a.ticker, a.mode, state);
+
+      if(stressEnabled&&a.mode==='tactical'&&state===1){
+        const lev=getLev(a.ticker);
+        grossRet=grossRet*(1+gapShock*lev)-slipCost;
+      } else if(stressEnabled&&a.mode==='permanent'){
+        grossRet=grossRet*(1+gapShock*0.3);
+      }
+
+      const isJepiIncome = (a.ticker==='JEPI' && a.mode==='permanent');
+      const isGpiqIncome = (a.ticker==='GPIQ' && a.mode==='permanent');
+      const isQqqiIncome = (a.ticker==='QQQI' && a.mode==='permanent');
+      if(isJepiIncome || isGpiqIncome || isQqqiIncome){
+        const divDailyGross = (isGpiqIncome || isQqqiIncome) ? GPIQ_DIV_DAILY_GROSS : JEPI_DIV_DAILY_GROSS;
+        const divComponent  = divDailyGross;
+        const priceComponent = grossRet - divComponent;
+
+        const atPriceRet = afterTaxReturn(priceComponent, a.account, a.incomeType, taxP);
+        assetValsAT[idx]  *= (1 + atPriceRet);
+        assetValsPre[idx] *= (1 + priceComponent);
+
+        const divAmtGross = assetValsPre[idx] * divComponent;
+        const divAmtAT    = assetValsAT[idx]  * afterTaxReturn(divComponent, a.account, a.incomeType, taxP);
+
+        if(state === 0){
+          divPoolAT  += divAmtAT;
+          divPoolPre += divAmtGross;
+        } else {
+          // [BUG FIX v10] 계좌-인식 투하 타겟: 동일 계좌 내 tactical 자산으로 제한
+          const divTgt = findDivTargetIdx(a.account);
+          assetValsAT[divTgt]  += divAmtAT;
+          assetValsPre[divTgt] += divAmtGross;
+        }
+      } else {
+        const atRet=afterTaxReturn(grossRet, a.account, a.incomeType, taxP);
+        assetValsAT[idx]  *= (1+atRet);
+        assetValsPre[idx] *= (1+grossRet);
+      }
+    });
+
+    if(state===1&&row.state===0&&tradeEntryPortVal!==null){
+      const exitVal=assetValsAT.reduce((s,v)=>s+v,0)+divPoolAT;
+      const tRet=(exitVal-tradeEntryPortVal)/tradeEntryPortVal*100;
+      tradesLog.push(tRet);
+      if(tRet<=0) whipsawSum+=tRet;
+      tradeEntryPortVal=null;
+    }
+
+    prevGlobalState=state;
+    const totalAT  = assetValsAT.reduce((s,v)=>s+v,0) + divPoolAT;
+    const totalPre = assetValsPre.reduce((s,v)=>s+v,0) + divPoolPre;
+    valsAT.push(totalAT);
+    valsPre.push(totalPre);
+
+    // [v8 §3 → v10 BUG FIX] 연말 리밸런싱 — 계좌별 독립 격벽 내 집행
+    // 구버전: 전체 NPV를 a.absW(전역 비율)로 재배정 → TFSA/RRSP/Taxable 계좌 국경 붕괴
+    // v10 수정: 각 계좌별 NPV 합산 후 계좌 내 innerW 비율로만 재배정
+    if(isLastDay){
+      const ACCTS = ['TFSA','RRSP','TAXABLE'];
+
+      ACCTS.forEach(acctName => {
+        // 이 계좌에 속한 자산 인덱스 목록
+        const acctIdxs = allocAssets.map((a,i)=>a.account===acctName?i:-1).filter(i=>i>=0);
+        if(acctIdxs.length === 0) return;
+
+        // 계좌 내 AT/Pre 합산
+        let acctATTotal  = acctIdxs.reduce((s,i)=>s+assetValsAT[i],  0);
+        let acctPreTotal = acctIdxs.reduce((s,i)=>s+assetValsPre[i], 0);
+
+        // TAXABLE 계좌: CG 세금 차감 (계좌 내 자산별로)
+        if(acctName==='TAXABLE'){
+          acctIdxs.forEach(i=>{
+            const a=allocAssets[i];
+            if(a.incomeType==='capital_gain'){
+              const gain=assetValsAT[i]-assetCostBasis[i];
+              if(gain>0) acctATTotal -= gain*(taxP.cgRate/100);
+            }
+          });
+        }
+
+        // 계좌 내 innerW 합산 (정규화 기준)
+        const innerWSum = acctIdxs.reduce((s,i)=>s+allocAssets[i].innerW, 0) || 1;
+
+        // 계좌 내 자산별 innerW 비율로 재배정 (계좌 국경 외부 자금 이동 없음)
+        acctIdxs.forEach(i=>{
+          const w = allocAssets[i].innerW / innerWSum;
+          assetValsAT[i]    = acctATTotal  * w;
+          assetCostBasis[i] = assetValsAT[i];
+          assetValsPre[i]   = acctPreTotal * w;
+        });
+      });
+
+      divPoolAT  = 0;
+      divPoolPre = 0;
+
+      valsAT[valsAT.length-1]   = assetValsAT.reduce((s,v)=>s+v,0);
+      valsPre[valsPre.length-1] = assetValsPre.reduce((s,v)=>s+v,0);
+    }
+  }
+
+  // ── RRSP terminal haircut
+  let finalAT=valsAT[valsAT.length-1];
+  const totVal=assetValsAT.reduce((s,v)=>s+v,0);
+  let rrspVal=0;
+  allocAssets.forEach((a,idx)=>{
+    if(a.account==='RRSP') rrspVal+=assetValsAT[idx];
+  });
+  if(rrspVal>0&&totVal>0){
+    const rrspFrac=rrspVal/totVal;
+    finalAT=finalAT*(1-rrspFrac)+finalAT*rrspFrac*(1-taxP.rrspWithdrawal/100);
+  }
+
+  let peak=0, maxDD=0;
+  for(let v of valsAT){if(v>peak)peak=v;let dd=(v-peak)/peak;if(dd<maxDD)maxDD=dd;}
+
+  let d1=new Date(sub[0].date),d2=new Date(sub[sub.length-1].date);
+  let yrs=(d2-d1)/(1000*60*60*24*365.25);
+  let cagrPre=(Math.pow(valsPre[valsPre.length-1],1/yrs)-1)*100;
+  let cagrAT=(Math.pow(finalAT,1/yrs)-1)*100;
+  let nT=tradesLog.length,wins=tradesLog.filter(t=>t>0).length;
+
+  return{cagrPreTax:cagrPre,cagrAfterTax:cagrAT,mdd:maxDD*100,trades:nT,wins,whipsaw:whipsawSum,winRate:nT>0?wins/nT*100:0,volDrag:volDragCumul*100};
+}
+
+
+// ─── OPTIMIZER ENGINE ─────────────────────────────────────────────────────────
+
+const OPT_ALPHA = {
+  mdd:  { 1: 0.100,  2: 0.030,  3: 0.005,   4: 0.000 },
+  whip: { 1: 0.005,  2: 0.001,  3: 0.0002,  4: 0.000 },
+  fail: { 1: 0.050,  2: 0.010,  3: 0.002,   4: 0.000 },
+};
+
+function optComputeScore(cagrAT, mddAbs, whipsawAbs, failRate, aMdd, aWhip, aFail) {
+  const P = 1 + (aMdd * mddAbs) + (aWhip * whipsawAbs) + (aFail * failRate);
+  return (cagrAT >= 0) ? (cagrAT / P) : (cagrAT * P);
+}
+
+function optYield() { return new Promise(r => setTimeout(r, 0)); }
+
+document.getElementById('btn-optimize').addEventListener('click', async () => {
+  if (RAW_QQQ.length === 0 || RAW_SP500.length === 0) {
+    alert("QQQ와 SP500 데이터를 먼저 로드해주세요."); return;
+  }
+
+  // ── Read target group and signal base from Twin-Track dropdowns
+  const targetGroup = document.getElementById('opt-target-group').value;  // 'A' or 'B'
+  const scenChoice  = document.getElementById('opt-scenario').value;       // 'A' or 'B' (signal params)
+
+  // Validate and fetch the target asset array
+  const targetAssets = validateGroup(targetGroup);
+  if (!targetAssets) return;
+
+  const mddPri  = +document.getElementById('opt-mdd-priority').value;
+  const whipPri = +document.getElementById('opt-whip-priority').value;
+  const failPri = +document.getElementById('opt-fail-priority').value;
+  const aMdd    = OPT_ALPHA.mdd[mddPri];
+  const aWhip   = OPT_ALPHA.whip[whipPri];
+  const aFail   = OPT_ALPHA.fail[failPri];
+
+  const startDate  = document.getElementById('opt-startdate').value;
+
+  // ── Read base signal config from chosen scenario (MA/EMA/signal fixed; ADX/ATR swept)
+  const pfx = scenChoice === 'A' ? 'sc-a' : 'sc-b';
+  const baseMA      = document.getElementById(`${pfx}-ma-type`).value;
+  const baseMAPer   = +document.getElementById(`${pfx}-ma-period`).value;
+  const baseEMAPer  = +document.getElementById(`${pfx}-ema-period`).value;
+  const baseSigMode = document.getElementById(`${pfx}-signal-mode`).value;
+
+  const taxP = {
+    mtr:            +document.getElementById('tax-mtr').value,
+    cgRate:         +document.getElementById('tax-cg').value,
+    cdnDivRate:     +document.getElementById('tax-cdn-div').value,
+    caDivRate:      +document.getElementById('tax-ca-div').value,
+    wht:            +document.getElementById('tax-wht').value,
+    rrspWithdrawal: +document.getElementById('tax-rrsp-withdrawal').value,
+  };
+  const stressEnabled = document.getElementById('stress-enabled').checked;
+  const stressParams  = {
+    prob: +document.getElementById('stress-prob').value / 100,
+    gap:  +document.getElementById('stress-gap').value  / 100,
+    slip: +document.getElementById('stress-slip').value / 10000,
+    seed: +document.getElementById('stress-seed').value,
+  };
+
+  // ── Build QQQ timeline
+  let qqqTL = RAW_QQQ.map(r => ({
+    date:  normalizeDate(r.Date || r["Ex-Dividend Date"]),
+    price: cleanNum(r.Price),
+    high:  cleanNum(r.High),
+    low:   cleanNum(r.Low),
+  })).filter(r => r.date).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const N = qqqTL.length;
+
+  let sp500Map = {};
+  RAW_SP500.forEach(r => { const d = normalizeDate(r.Date); if (d) sp500Map[d] = cleanNum(r.Price); });
+  let sp500FF = new Array(N).fill(null), last500 = null;
+  for (let i = 0; i < N; i++) { const d = qqqTL[i].date; if (sp500Map[d] !== undefined) last500 = sp500Map[d]; sp500FF[i] = last500; }
+
+  let prices = qqqTL.map(r => r.price);
+  let highs  = qqqTL.map(r => r.high);
+  let lows   = qqqTL.map(r => r.low);
+
+  // Build the common matrix via shared builder
+  const matrix = buildCommonMatrix(qqqTL, prices, highs, lows, sp500FF);
+
+  // Build indicators once (MA/EMA fixed for entire sweep)
+  const indBase = buildIndicators(prices, highs, lows, baseMA, baseMAPer, baseEMAPer);
+
+  // ── Grid parameters: 21 × 11 = 231
+  const ADX_VALS = [];
+  for (let a = 10; a <= 30; a++) ADX_VALS.push(a);
+
+  const ATR_VALS = [];
+  for (let a = 30; a <= 80; a += 5) ATR_VALS.push(a / 10);
+
+  const TOTAL = ADX_VALS.length * ATR_VALS.length; // 231
+
+  // ── UI: show progress, disable button
+  const btn        = document.getElementById('btn-optimize');
+  const progWrap   = document.getElementById('opt-progress-wrap');
+  const progBar    = document.getElementById('opt-progress-bar');
+  const progLbl    = document.getElementById('opt-progress-label');
+  const progPct    = document.getElementById('opt-progress-pct');
+  btn.disabled     = true;
+  progWrap.classList.remove('hidden');
+  document.getElementById('opt-results-wrap').classList.add('hidden');
+  progBar.style.width = '0%';
+  progBar.style.background = 'rgba(14,165,233,0.8)';
+
+  // Update dynamic target display
+  updateOptTargetDisplay();
+
+  const BATCH = 15;
+  const results = [];
+  let runIdx = 0;
+
+  for (let ai = 0; ai < ADX_VALS.length; ai++) {
+    for (let ti = 0; ti < ATR_VALS.length; ti++) {
+      const adxV = ADX_VALS[ai];
+      const atrV = ATR_VALS[ti];
+
+      const cfg = {
+        maType:    baseMA,
+        maPeriod:  baseMAPer,
+        emaPeriod: baseEMAPer,
+        adxThresh: adxV,
+        atrMult:   atrV,
+        signalMode: baseSigMode,
+      };
+
+      // ── TWIN-TRACK opt: use targetAssets (dynamically bound to group A or B)
+      const res = runEngineCore(matrix, startDate, indBase, cfg, targetAssets, taxP, stressEnabled, stressParams);
+      const failRate = res.trades > 0 ? ((res.trades - res.wins) / res.trades * 100) : 0;
+
+      const score = optComputeScore(
+        res.cagrAfterTax,
+        Math.abs(res.mdd),
+        Math.abs(res.whipsaw),
+        failRate,
+        aMdd, aWhip, aFail
+      );
+
+      results.push({
+        adx: adxV, atr: atrV,
+        cagrAT:   res.cagrAfterTax,
+        mdd:      res.mdd,
+        whipsaw:  res.whipsaw,
+        failRate,
+        score,
+        volDrag:  res.volDrag,
+      });
+
+      runIdx++;
+
+      if (runIdx % BATCH === 0 || runIdx === TOTAL) {
+        const pct = (runIdx / TOTAL * 100).toFixed(1);
+        progBar.style.width  = pct + '%';
+        progPct.textContent  = `${runIdx} / ${TOTAL}`;
+        progLbl.textContent  = `ADX ${adxV} | ATR ${atrV.toFixed(1)}× 연산 중... (그룹 ${targetGroup} 자산군 기준)`;
+        await optYield();
+      }
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+
+  function optRow(r, rank, compact) {
+    const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const rankCls   = rank === 1 ? 'text-amber-400' : rank === 2 ? 'text-zinc-300' : rank === 3 ? 'text-orange-500' : 'text-zinc-600';
+    const p  = compact ? 'p-2' : 'p-2.5';
+    const fs = compact ? 'text-[10px]' : 'text-[11px]';
+    return `<tr class="hover:bg-zinc-900/20 transition-colors ${fs}">
+      <td class="${p} text-center mono ${rankCls} font-bold">${rankLabel}</td>
+      <td class="${p} text-center mono text-amber-400 font-bold">${r.adx}</td>
+      <td class="${p} text-center mono text-amber-300">${r.atr.toFixed(1)}×</td>
+      <td class="${p} text-right mono font-bold ${r.cagrAT >= 0 ? 'text-emerald-400' : 'text-rose-500'}">${r.cagrAT.toFixed(2)}%</td>
+      <td class="${p} text-right mono text-rose-400">${r.mdd.toFixed(2)}%</td>
+      <td class="${p} text-right mono text-orange-400">${r.whipsaw.toFixed(2)}%</td>
+      <td class="${p} text-right mono ${r.failRate >= 50 ? 'text-rose-400' : 'text-zinc-400'}">${r.failRate.toFixed(1)}%</td>
+      <td class="${p} text-right mono text-sky-400 font-bold">${r.score.toFixed(4)}</td>
+      <td class="${p} text-right mono" style="color:#a855f7">${r.volDrag.toFixed(2)}%</td>
+    </tr>`;
+  }
+
+  document.getElementById('opt-table-body').innerHTML =
+    results.slice(0, 10).map((r, i) => optRow(r, i + 1, false)).join('');
+
+  document.getElementById('opt-all-body').innerHTML =
+    results.map((r, i) => optRow(r, i + 1, true)).join('');
+
+  const sdOpts  = document.getElementById('opt-startdate');
+  const sdLabel = sdOpts.options[sdOpts.selectedIndex].text;
+  const tgLabel = targetGroup === 'A' ? '그룹 A 자산군 (ASSET_SET_A)' : '그룹 B 자산군 (ASSET_SET_B)';
+  const scLabel = scenChoice === 'A' ? 'SIGNAL_A' : 'SIGNAL_B';
+  document.getElementById('opt-run-label').textContent =
+    `타겟: ${tgLabel} · 신호: ${scLabel} · 기점 ${sdLabel} · MDD ${mddPri}순위 | 휩쏘 ${whipPri}순위 | 실패율 ${failPri}순위 · 총 ${TOTAL}회 스윕 완료`;
+
+  // Update target display with final result
+  const tDispEl = document.getElementById('opt-target-display');
+  const tgColor = targetGroup === 'A' ? '#f59e0b' : '#14b8a6';
+  const scColor = scenChoice === 'A' ? '#f59e0b' : '#14b8a6';
+  tDispEl.innerHTML = `✓ 집행 완료 — 자산군: <span style="color:${tgColor};font-weight:700">그룹 ${targetGroup} (ASSET_SET_${targetGroup})</span> &nbsp;|&nbsp; 신호: <span style="color:${scColor};font-weight:700">SIGNAL_${scenChoice}</span>`;
+
+  document.getElementById('opt-results-wrap').classList.remove('hidden');
+  progLbl.textContent = `✓ ${TOTAL}회 연산 완료 — Score 내림차순 정렬 완료 (그룹 ${targetGroup} 자산군 기준)`;
+  progBar.style.width = '100%';
+  progBar.style.background = 'rgba(16,185,129,0.7)';
+
+  btn.disabled = false;
+});
+
+</script>
+</body>
+</html>
