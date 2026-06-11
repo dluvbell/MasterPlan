@@ -265,6 +265,7 @@
     transition: color 0.4s;
   }
   .status-headline.state1 { color: var(--green); }
+  .status-headline.state1warn { color: var(--orange); }
   .status-headline.state0 { color: var(--red); }
 
   /* ── METRIC BOXES ── */
@@ -396,6 +397,10 @@
   <div style="display:flex; align-items:center; gap:6px;">
     <span class="apikey-label">ATR Mult</span>
     <input type="number" id="p-atr-m" class="apikey-input" style="width:64px; min-width:unset;" value="7.5" min="0.5" max="30" step="0.5">
+  </div>
+  <div style="display:flex; align-items:center; gap:6px;">
+    <span class="apikey-label">분할청산 MA</span>
+    <input type="number" id="p-partial-ma" class="apikey-input" style="width:64px; min-width:unset;" value="60" min="5" max="200" step="1">
   </div>
 
   <div style="display:flex; align-items:center; gap:6px; margin-left:auto; flex-wrap:wrap;">
@@ -673,6 +678,7 @@ function executeAutomatedSignalTrigger() {
   const adxThreshold = Math.max(1, parseFloat(document.getElementById('p-adx-t').value) || 15);
   const atrPeriod    = Math.max(1,   parseInt(document.getElementById('p-atr-p').value) || 14);
   const atrMult      = Math.max(0.5,parseFloat(document.getElementById('p-atr-m').value) || 7.5);
+  const partialMaPeriod = Math.max(5, parseInt(document.getElementById('p-partial-ma').value) || 60);   // [v15.0] 옵션2 분할청산 기준 이평선
 
   // 레이블 동적 업데이트
   const lbl = document.getElementById('label-atr-stop');
@@ -696,6 +702,7 @@ function executeAutomatedSignalTrigger() {
   const ema200Arr = calcEMA(closes, emaPeriod);
   const atrArr    = calcATR(data, atrPeriod);
   const adxArr    = calcADX(data, adxPeriod);
+  const ma60Arr   = calcSMA(closes, partialMaPeriod);   // [v15.0] 옵션2 분할청산 이평선 평면
 
   // 2. 과거 기점부터 현재까지 경로 의존적(Path-dependent) 상태 머신 구동
   let inPos          = false;
@@ -730,9 +737,8 @@ function executeAutomatedSignalTrigger() {
         highPeak = close;
         peakIdx  = i;
       }
-      // [확정] 정통 트레일링 스톱: 변동성(ATR) 확대로 인한 손절선 후퇴 차단 — 한번 올라간 스톱은 내려오지 않음
-      const candidateStop = highPeak - atrMult * atrV;
-      currentAtrStop = (currentAtrStop === null) ? candidateStop : Math.max(currentAtrStop, candidateStop);
+      // [v15.0 확정] 래칫 폐기 → 순수 트레일링 스톱 회귀: 변동성(ATR) 확대 시 손절선 후퇴 허용
+      currentAtrStop = highPeak - atrMult * atrV;
 
       // 퇴각 조건: 추세 이탈 OR ATR 손절선 붕괴 (ADX 하락은 퇴각 사유 아님)
       if (!maAbove || close < currentAtrStop) {
@@ -753,6 +759,7 @@ function executeAutomatedSignalTrigger() {
   const ema200    = ema200Arr[lastIdx];
   const atr14     = atrArr[lastIdx];
   const adx14     = adxArr[lastIdx];
+  const ma60      = ma60Arr[lastIdx];   // [v15.0] 옵션2 익일 집행 판정용 당일 MA60
 
   // 이진법적 최종 국면 확정 (0 또는 1만 존재)
   const finalState = inPos ? 1 : 0;
@@ -799,8 +806,15 @@ function executeAutomatedSignalTrigger() {
     }
     hl.textContent = `${prefix} (${reason})`;
   } else {
-    hl.className = 'status-headline state1';
-    hl.textContent = `✅ STATE 1 — 전술 타격대 진격 주행 중 (QLD 보유 유지)`;
+    // [v15.0 옵션2] State 1 익일 집행 프로토콜 — 당일 종가 vs 당일 MA60 정밀 분기
+    const belowMa60 = (ma60 !== null) && (lastClose < ma60);
+    if (belowMa60) {
+      hl.className = 'status-headline state1warn';
+      hl.textContent = `⚠️ STATE 1 중기 조정 국면 — 익일(다음날) 개장 시 50% 분할 대피 집행 명령 (종가 ${lastClose.toFixed(2)} < MA${partialMaPeriod} ${ma60.toFixed(2)})`;
+    } else {
+      hl.className = 'status-headline state1';
+      hl.textContent = `✅ STATE 1 정상 상승 국면 — 100% 풀 포지션 유지 (또는 익일 복귀 완료) (종가 ${lastClose.toFixed(2)} ≥ MA${partialMaPeriod} ${ma60 !== null ? ma60.toFixed(2) : '—'})`;
+    }
   }
 
   // 메트릭 박스 업데이트
