@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MasterPlan 17 — Command Center</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #111118;
+    --border:    #1e1e2e;
+    --border2:   #2a2a3e;
+    --muted:     #6b6b8a;
+    --text:      #e2e2f0;
+    --subtext:   #9090b0;
+    
+    --blue:      #0ea5e9;
+    --blue-glow: rgba(14,165,233,0.15);
+    --amber:     #f59e0b;
+    --amber-glow:rgba(245,158,11,0.15);
+    --green:     #06d6a0;
+
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui:   'Space Grotesk', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .main-header {
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+  .system-title {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .system-subtitle {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .nav-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 640px) {
+    .nav-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .nav-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+  }
+
+  .card-plan { --accent: var(--amber); --glow: var(--amber-glow); }
+  .card-signal { --accent: var(--blue); --glow: var(--blue-glow); }
+
+  .nav-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--glow);
+    transform: translateY(-2px);
+  }
+
+  .card-icon-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .card-id {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .card-title {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--subtext);
+    line-height: 1.5;
+    min-height: 54px;
+  }
+
+  .launch-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 10px;
+    text-align: center;
+    text-transform: uppercase;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .nav-card:hover .launch-btn {
+    background: var(--accent);
+    color: #050510;
+    border-color: var(--accent);
+    font-weight: 800;
+  }
+
+  .system-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: #3a3a5a;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="main-header">
+    <h1 class="system-title">MasterPlan Tactical Matrix</h1>
+    <p class="system-subtitle">Dual-Track Optimization & Real-Time Execution Command Center</p>
+  </header>
+
+  <nav class="nav-grid">
+    <a href="./masterplan17_v14.html" class="nav-card card-plan">
+      <div class="card-icon-row">
+        <div class="card-dot"></div>
+        <span class="card-id">ENGINE_BACKTEST_V14</span>
+      </div>
+      <h2 class="card-title">MASTER PLAN Backend</h2>
+      <p class="card-desc">
+        Twin-Track 이원화 자산배분 검증 원장 가동.<br>
+        231회 전수 그리드 스윕 기반 목적함수 연산 및 캐나다 세후 복리 성과 시뮬레이션 최적화 엔진.
+      </p>
+      <div class="launch-btn">Execute Backtest Core</div>
+    </a>
+
+    <a href="./masterplan_signal.html" class="nav-card card-signal">
+      <div class="card-icon-row">
+        <div class="card-dot"></div>
+        <span class="card-id">TOWER_LIVE_SIGNAL_V17</span>
+      </div>
+      <h2 class="card-title">MASTER SIGNAL Live Tower</h2>
+      <p class="card-desc">
+        Polygon API 원격 시계열 피드 기반 5단계 실전 신호등 시스템.<br>
+        경로 의존적 상태 머신 규격에 의거한 장후 당일 확정 진격/퇴각 실실무 명령 관제 사령탑.
+      </p>
+      <div class="launch-btn">Launch Signal Monitor</div>
+    </a>
+  </nav>
+
+  <footer class="system-footer">
+    <span>SECURITY LEVEL: ACC-FIREWALL SECURE</span>
+    <span>SPEC: DIV-VALVE v12 / MULTI-TRACK REGIME</span>
+  </footer>
+</div>
+
+</body>
+</html>
